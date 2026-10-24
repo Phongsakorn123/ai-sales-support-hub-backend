@@ -1,10 +1,11 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from pydantic import SecretStr
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -13,11 +14,15 @@ from app.backend.schemas.auth import UserRegister
 from app.core.config import settings
 
 JWT_ALGORITHM = "HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 _password_hasher = PasswordHasher()
+_DUMMY_PASSWORD_HASH = _password_hasher.hash(secrets.token_urlsafe(32))
 
 
-class DuplicateEmailError(Exception):
-    pass
+class DuplicateUserError(Exception):
+    def __init__(self, field: str) -> None:
+        self.field = field
+        super().__init__(field)
 
 
 class AuthenticationConfigurationError(Exception):
@@ -53,13 +58,16 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 
 def register_user(db: Session, user_data: UserRegister) -> User:
+    username = user_data.username
     email = user_data.email
     try:
-        existing_user = db.scalar(select(User).where(User.email == email))
-        if existing_user is not None:
-            raise DuplicateEmailError
+        if db.scalar(select(User.id).where(User.username == username)) is not None:
+            raise DuplicateUserError("username")
+        if db.scalar(select(User.id).where(User.email == email)) is not None:
+            raise DuplicateUserError("email")
 
         user = User(
+            username=username,
             email=email,
             hashed_password=hash_password(user_data.password),
         )
@@ -67,27 +75,43 @@ def register_user(db: Session, user_data: UserRegister) -> User:
         db.commit()
         db.refresh(user)
         return user
-    except DuplicateEmailError:
+    except DuplicateUserError:
         db.rollback()
         raise
     except IntegrityError as error:
         db.rollback()
-        existing_user = db.scalar(select(User.id).where(User.email == email))
-        if existing_user is not None:
-            raise DuplicateEmailError from error
+        try:
+            if db.scalar(select(User.id).where(User.username == username)) is not None:
+                raise DuplicateUserError("username") from error
+            if db.scalar(select(User.id).where(User.email == email)) is not None:
+                raise DuplicateUserError("email") from error
+        except DuplicateUserError:
+            raise
+        except SQLAlchemyError:
+            raise AuthenticationPersistenceError from None
         raise AuthenticationPersistenceError from None
     except SQLAlchemyError as error:
         db.rollback()
         raise AuthenticationPersistenceError from None
 
 
-def authenticate_user(db: Session, email: str, password: str) -> User | None:
+def authenticate_user(db: Session, identifier: str, password: str) -> User | None:
+    normalized_identifier = identifier.strip().lower()
     try:
-        user = db.scalar(select(User).where(User.email == email))
-    except SQLAlchemyError as error:
+        user = db.scalar(
+            select(User).where(
+                or_(
+                    User.username == normalized_identifier,
+                    User.email == normalized_identifier,
+                )
+            )
+        )
+    except SQLAlchemyError:
         db.rollback()
         raise AuthenticationPersistenceError from None
-    if user is None or not user.is_active or not verify_password(password, user.hashed_password):
+    password_hash = user.hashed_password if user is not None else _DUMMY_PASSWORD_HASH
+    password_matches = verify_password(password, password_hash)
+    if user is None or not user.is_active or not password_matches:
         return None
     return user
 
@@ -98,13 +122,11 @@ def create_access_token(
     expires_delta: timedelta | None = None,
 ) -> str:
     secret = _signing_secret()
-    if settings.jwt_access_token_expire_minutes < 1:
-        raise AuthenticationConfigurationError
     now = datetime.now(timezone.utc)
     expiration = now + (
         expires_delta
         if expires_delta is not None
-        else timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        else timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return jwt.encode(
         {

@@ -1,11 +1,15 @@
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
+import jwt
 from pydantic import SecretStr
 from sqlalchemy import URL, create_engine, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from app.backend.models.user import User
@@ -51,23 +55,33 @@ class AuthAPITests(unittest.TestCase):
         self.engine.dispose()
         self.temp_directory.cleanup()
 
-    def register(self, email: str = "Sales.User@example.com", password: str = PASSWORD):
+    def register(
+        self,
+        username: str = "Sales.User",
+        email: str = "Sales.User@example.com",
+        password: str = PASSWORD,
+    ):
         return self.client.post(
             "/api/v1/auth/register",
-            json={"email": email, "password": password},
+            json={"username": username, "email": email, "password": password},
         )
 
-    def login(self, email: str = "sales.user@example.com", password: str = PASSWORD):
+    def login(
+        self,
+        identifier: str = "sales.user@example.com",
+        password: str = PASSWORD,
+    ):
         return self.client.post(
             "/api/v1/auth/login",
-            data={"username": email, "password": password},
+            data={"username": identifier, "password": password},
         )
 
-    def test_register_normalizes_email_hashes_password_and_returns_safe_profile(self) -> None:
+    def test_register_normalizes_username_and_email_hashes_password_and_returns_safe_profile(self) -> None:
         response = self.register()
 
         self.assertEqual(response.status_code, 201, response.text)
         user_data = response.json()
+        self.assertEqual(user_data["username"], "sales.user")
         self.assertEqual(user_data["email"], "sales.user@example.com")
         self.assertNotIn("password", user_data)
         self.assertNotIn("hashed_password", user_data)
@@ -80,21 +94,87 @@ class AuthAPITests(unittest.TestCase):
 
     def test_duplicate_email_registration_returns_conflict(self) -> None:
         self.assertEqual(self.register().status_code, 201)
-        duplicate = self.register(email=" SALES.USER@EXAMPLE.COM ")
+        duplicate = self.register(
+            username="other.user",
+            email=" SALES.USER@EXAMPLE.COM ",
+        )
         self.assertEqual(duplicate.status_code, 409)
         self.assertNotIn("hashed_password", duplicate.json())
+
+    def test_duplicate_username_registration_returns_conflict(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+
+        duplicate = self.register(
+            username=" SALES.USER ",
+            email="another.user@example.com",
+        )
+
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertIn("username", duplicate.json()["detail"])
+
+    def test_missing_registration_fields_are_rejected(self) -> None:
+        for payload in (
+            {"email": "valid@example.com", "password": PASSWORD},
+            {"username": "valid-user", "password": PASSWORD},
+            {"username": "valid-user", "email": "valid@example.com"},
+        ):
+            with self.subTest(missing_field=set({"username", "email", "password"}) - payload.keys()):
+                response = self.client.post("/api/v1/auth/register", json=payload)
+                self.assertEqual(response.status_code, 422, response.text)
+
+    def test_concurrent_duplicate_registrations_create_at_most_one_account(self) -> None:
+        def register_once():
+            with TestClient(app) as client:
+                return client.post(
+                    "/api/v1/auth/register",
+                    json={
+                        "username": "concurrent-user",
+                        "email": "concurrent@example.com",
+                        "password": PASSWORD,
+                    },
+                )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            responses = list(executor.map(lambda _: register_once(), range(2)))
+
+        self.assertCountEqual(
+            [response.status_code for response in responses],
+            [201, 409],
+        )
+        with self.session_factory() as db:
+            users = db.scalars(
+                select(User).where(User.username == "concurrent-user")
+            ).all()
+        self.assertEqual(len(users), 1)
 
     def test_invalid_email_and_weak_password_are_rejected(self) -> None:
         invalid_email = self.client.post(
             "/api/v1/auth/register",
-            json={"email": "not-an-email", "password": PASSWORD},
+            json={
+                "username": "valid-user",
+                "email": "not-an-email",
+                "password": PASSWORD,
+            },
         )
         weak_password = self.client.post(
             "/api/v1/auth/register",
-            json={"email": "valid@example.com", "password": "short"},
+            json={
+                "username": "valid-user",
+                "email": "valid@example.com",
+                "password": "short",
+            },
+        )
+        invalid_username = self.client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "contains spaces",
+                "email": "valid@example.com",
+                "password": PASSWORD,
+            },
         )
         self.assertEqual(invalid_email.status_code, 422)
         self.assertEqual(weak_password.status_code, 422)
+        self.assertEqual(invalid_username.status_code, 422)
 
     def test_login_returns_usable_bearer_token(self) -> None:
         self.assertEqual(self.register().status_code, 201)
@@ -110,17 +190,87 @@ class AuthAPITests(unittest.TestCase):
         )
         self.assertEqual(current.status_code, 200, current.text)
         self.assertEqual(current.json()["email"], "sales.user@example.com")
+        self.assertEqual(current.json()["username"], "sales.user")
         self.assertNotIn("hashed_password", current.json())
+
+    def test_login_with_username_succeeds(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+
+        response = self.login(identifier=" SALES.USER ")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["token_type"], "bearer")
+        self.assertTrue(response.json()["access_token"])
+
+    def test_access_token_expires_after_sixty_minutes(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+
+        token = self.login(identifier="sales.user").json()["access_token"]
+        claims = jwt.decode(
+            token,
+            TEST_SECRET.get_secret_value(),
+            algorithms=["HS256"],
+        )
+
+        self.assertEqual(claims["exp"] - claims["iat"], 60 * 60)
 
     def test_wrong_password_and_unknown_email_share_generic_unauthorized(self) -> None:
         self.assertEqual(self.register().status_code, 201)
 
         wrong_password = self.login(password="incorrect password")
-        unknown_email = self.login(email="nobody@example.com")
+        unknown_email = self.login(identifier="nobody@example.com")
+        unknown_username = self.login(identifier="nobody")
 
         self.assertEqual(wrong_password.status_code, 401)
         self.assertEqual(unknown_email.status_code, 401)
+        self.assertEqual(unknown_username.status_code, 401)
         self.assertEqual(wrong_password.json(), unknown_email.json())
+        self.assertEqual(wrong_password.json(), unknown_username.json())
+        self.assertEqual(
+            wrong_password.json()["detail"],
+            "Invalid username/email or password.",
+        )
+
+    def test_unknown_and_inactive_users_still_use_password_verification(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+        with self.session_factory() as db:
+            user = db.scalar(select(User).where(User.username == "sales.user"))
+            user.is_active = False
+            db.commit()
+
+        with patch(
+            "app.backend.services.auth.verify_password",
+            wraps=verify_password,
+        ) as password_verification:
+            unknown = self.login(identifier="unknown-user")
+            inactive = self.login(identifier="sales.user")
+
+        self.assertEqual(unknown.status_code, 401)
+        self.assertEqual(inactive.status_code, 401)
+        self.assertEqual(password_verification.call_count, 2)
+
+    def test_database_errors_do_not_log_sql_details_or_tracebacks(self) -> None:
+        failing_session = Mock()
+        failing_session.get.side_effect = SQLAlchemyError("sensitive SQL error")
+        previous_override = app.dependency_overrides[get_db]
+
+        def failing_get_db():
+            yield failing_session
+
+        app.dependency_overrides[get_db] = failing_get_db
+        try:
+            with patch("app.backend.dependencies.auth.logger") as auth_logger:
+                token = create_access_token(1)
+                response = self.client.get(
+                    "/api/v1/auth/me",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+        finally:
+            app.dependency_overrides[get_db] = previous_override
+
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("sensitive SQL error", response.text)
+        auth_logger.error.assert_called_once_with("Could not load authenticated user")
 
     def test_missing_or_placeholder_jwt_secret_fails_closed(self) -> None:
         self.assertEqual(self.register().status_code, 201)
@@ -192,6 +342,25 @@ class AuthAPITests(unittest.TestCase):
         finally:
             unauthenticated_client.close()
 
+    def test_product_routes_reject_invalid_and_expired_tokens_and_accept_valid_token(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+        valid_token = self.login(identifier="sales.user").json()["access_token"]
+        expired_token = create_access_token(1, expires_delta=timedelta(minutes=-1))
+
+        for token in ("not-a-token", expired_token):
+            with self.subTest(token=token[:10]):
+                response = self.client.get(
+                    "/api/v1/products",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                self.assertEqual(response.status_code, 401)
+
+        authorized = self.client.get(
+            "/api/v1/products",
+            headers={"Authorization": f"Bearer {valid_token}"},
+        )
+        self.assertEqual(authorized.status_code, 200, authorized.text)
+
     def test_health_remains_public_with_exact_response(self) -> None:
         response = self.client.get("/health")
         self.assertEqual(
@@ -215,3 +384,5 @@ class AuthAPITests(unittest.TestCase):
         self.assertEqual(oauth["flows"]["password"]["tokenUrl"], "/api/v1/auth/login")
         login_form = schema["paths"]["/api/v1/auth/login"]["post"]["requestBody"]
         self.assertIn("application/x-www-form-urlencoded", login_form["content"])
+        register_form = schema["paths"]["/api/v1/auth/register"]["post"]["requestBody"]
+        self.assertIn("application/json", register_form["content"])

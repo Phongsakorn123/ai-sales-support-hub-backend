@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     database_path: Path = PROJECT_ROOT / "data" / "app.db"
     jwt_secret_key: SecretStr | None = None
-    jwt_access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
 
     @field_validator("database_path")
     @classmethod

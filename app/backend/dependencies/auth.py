@@ -39,16 +39,13 @@ def get_current_user(
 
     try:
         user = db.get(User, user_id)
-    except SQLAlchemyError as error:
+    except SQLAlchemyError:
         db.rollback()
-        logger.error(
-            "Could not load authenticated user",
-            exc_info=(type(error), error, error.__traceback__),
-        )
+        logger.error("Could not load authenticated user")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred.",
-        ) from error
+        ) from None
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
