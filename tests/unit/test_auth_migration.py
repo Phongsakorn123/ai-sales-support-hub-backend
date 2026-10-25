@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ALEMBIC = ROOT / ".venv" / "bin" / "alembic"
 PRODUCT_REVISION = "fa8837aed041"
 USER_REVISION = "c826f22a32bf"
+USERNAME_REVISION = "d1b9a7c4e2f0"
 
 
 class UserMigrationTests(unittest.TestCase):
@@ -42,7 +43,7 @@ class UserMigrationTests(unittest.TestCase):
                 )
                 connection.commit()
 
-            self.run_alembic(["upgrade", "head"], env)
+            self.run_alembic(["upgrade", USERNAME_REVISION], env)
             with sqlite3.connect(database_path) as connection:
                 tables = {
                     row[0]
@@ -172,3 +173,63 @@ class UserMigrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductCatalogMigrationTests(unittest.TestCase):
+    def test_catalog_migration_preserves_existing_products(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "catalog.db"
+            env = {**os.environ, "DATABASE_PATH": str(database_path)}
+            subprocess.run(
+                [str(ALEMBIC), "upgrade", "d1b9a7c4e2f0"], cwd=ROOT, env=env, check=True,
+                capture_output=True,
+            )
+            with sqlite3.connect(database_path) as connection:
+                connection.execute("INSERT INTO products (name, price) VALUES ('Old', 12.50)")
+            subprocess.run(
+                [str(ALEMBIC), "upgrade", "e3c5a1b8f7d2"], cwd=ROOT, env=env, check=True,
+                capture_output=True,
+            )
+            with sqlite3.connect(database_path) as connection:
+                row = connection.execute(
+                    "SELECT name, selling_price, discontinued, specifications, sku FROM products"
+                ).fetchone()
+            self.assertEqual(row, ("Old", 12.5, 0, "[]", None))
+
+    def test_normalization_migration_moves_json_and_preserves_users(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "normalize.db"
+            env = {**os.environ, "DATABASE_PATH": str(database_path)}
+            subprocess.run(
+                [str(ALEMBIC), "upgrade", "e3c5a1b8f7d2"], cwd=ROOT, env=env, check=True,
+                capture_output=True,
+            )
+            with sqlite3.connect(database_path) as connection:
+                connection.execute(
+                    "INSERT INTO users (email, username, hashed_password) VALUES ('u@example.com', 'u', 'h')"
+                )
+                connection.execute(
+                    "INSERT INTO products (name, selling_price, is_active, specifications, tags, sku) "
+                    "VALUES ('A', 5, 0, '[{\"key\": \"RAM\", \"value\": \"8 GB\"}]', '[\"x\", \"y\"]', 'S1')"
+                )
+                connection.execute("INSERT INTO products (name, selling_price) VALUES ('B', 6)")
+            subprocess.run(
+                [str(ALEMBIC), "upgrade", "head"], cwd=ROOT, env=env, check=True, capture_output=True
+            )
+            with sqlite3.connect(database_path) as connection:
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM users").fetchone()[0], 1)
+                self.assertEqual(
+                    connection.execute("SELECT name, discontinued, sku FROM products ORDER BY id").fetchall(),
+                    [("A", 1, "S1"), ("B", 0, None)],
+                )
+                self.assertEqual(
+                    connection.execute("SELECT key, value, position FROM product_specifications").fetchall(),
+                    [("RAM", "8 GB", 0)],
+                )
+                self.assertEqual(
+                    connection.execute("SELECT value FROM product_tags ORDER BY position").fetchall(),
+                    [("x",), ("y",)],
+                )
+                columns = {row[1] for row in connection.execute("PRAGMA table_info(products)")}
+                self.assertNotIn("tags", columns)
+                self.assertNotIn("is_active", columns)

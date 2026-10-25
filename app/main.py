@@ -1,8 +1,9 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.backend.api.auth import router as auth_router
 from app.backend.api.products import router as products_router
-from app.core.config import settings
+from app.core.config import PROJECT_ROOT, settings
 
 app = FastAPI(
     title=settings.app_name,
@@ -15,6 +16,10 @@ app = FastAPI(
         }
     ],
 )
+
+STATIC_DIR = PROJECT_ROOT / "static"
+STATIC_DIR.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.include_router(products_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)

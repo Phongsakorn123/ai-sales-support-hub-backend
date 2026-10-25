@@ -7,7 +7,7 @@ from app.backend.models.product import Product
 from app.backend.dependencies.auth import get_current_user
 from app.backend.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.backend.services import products as product_service
-from app.backend.services.products import ProductPersistenceError
+from app.backend.services.products import DuplicateSkuError, ProductPersistenceError
 from app.db.session import get_db
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,8 @@ router = APIRouter(
 
 
 def _database_error(operation: str, error: ProductPersistenceError) -> HTTPException:
+    if isinstance(error, DuplicateSkuError):
+        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SKU already exists.")
     logger.error(
         "Product %s failed",
         operation,
@@ -51,8 +53,8 @@ def create_product(
 @router.get(
     "",
     response_model=list[ProductRead],
-    summary="List active products",
-    description="Returns active products only, ordered by ID. Inactive products remain retrievable by ID.",
+    summary="List products",
+    description="Returns products ordered by ID, including discontinued ones; use `availability` to distinguish them.",
     responses={500: {"description": "Database operation failed"}},
 )
 def list_products(

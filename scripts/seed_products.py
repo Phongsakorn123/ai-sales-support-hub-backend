@@ -1,0 +1,267 @@
+"""Seed 25 simulated IT products into the existing ``products`` table.
+
+Usage (from the project root):
+    python -m scripts.seed_products                    # insert missing mock products
+    python -m scripts.seed_products --reset-products   # development only: clear products first
+
+Prices, costs, stock, specifications and warranties are SIMULATED demo data.
+"""
+
+import argparse
+import sys
+from decimal import Decimal
+
+from sqlalchemy import delete, func, inspect, select
+from sqlalchemy.orm import Session
+
+from app.backend.models.product import Product
+from app.backend.services.products import COLLECTION_FIELDS, _set_collections
+from app.core.config import settings
+from app.db.session import SessionLocal, engine
+
+SEED_SKU_PREFIX = "MOCK-"
+CATEGORIES = ("Computer", "Networking", "Peripherals", "Laboratory", "Monitoring")
+
+
+def _p(
+    category, code, n, name, brand, model, type_, sub_type, desc, price, cost, stock,
+    specs, features, warranty, tags, customers, use_cases, benefits, limitations,
+    discontinued=False,
+):
+    return {
+        "sku": f"MOCK-{code}-{n:03d}",
+        "name": name,
+        "brand": brand,
+        "model": model,
+        "description": desc,
+        "image_url": None,
+        "category": category,
+        "type": type_,
+        "sub_type": sub_type,
+        "selling_price": Decimal(price),
+        "currency": "THB",
+        "cost_price": Decimal(cost) if cost is not None else None,
+        "stock_quantity": stock,
+        "discontinued": discontinued,
+        "specifications": [{"key": k, "value": v} for k, v in specs],
+        "features": features,
+        "warranty_months": warranty,
+        "tags": tags,
+        "target_customers": customers,
+        "use_cases": use_cases,
+        "key_benefits": benefits,
+        "limitations": limitations,
+    }
+
+
+PRODUCTS = [
+    # Computer
+    _p("Computer", "COM", 1, "Lenovo ThinkPad T14 Gen 5", "Lenovo", "T14 Gen 5", "Laptop", "Business Laptop",
+       "14-inch business laptop for mobile office work with strong security and keyboard.",
+       "36900.00", "31500.00", 14, [("Processor", "Intel Core Ultra 5"), ("RAM", "16 GB"), ("Storage", "512 GB SSD"), ("Screen Size", "14 in")],
+       ["Fingerprint reader", "MIL-STD durability tested", "Backlit keyboard"], 36, ["laptop", "business", "mobile"],
+       ["SME", "Enterprise"], ["Office Productivity", "Business Travel"], "Reliable daily driver for staff on the move.", "Integrated graphics only."),
+    _p("Computer", "COM", 2, "Dell OptiPlex 7020 Small Form Factor", "Dell", "OptiPlex 7020 SFF", "Desktop", "Desktop Computer",
+       "Compact desktop computer for offices needing manageable and space-saving workstations.",
+       "24500.00", "20800.00", 22, [("Processor", "Intel Core i5"), ("RAM", "16 GB"), ("Storage", "512 GB SSD")],
+       ["Tool-less chassis", "TPM 2.0", "Multiple display outputs"], 36, ["desktop", "office"],
+       ["SME", "Government", "Education"], ["Office Productivity"], "Easy fleet deployment and servicing.", "No dedicated GPU."),
+    _p("Computer", "COM", 3, "HP Z2 Tower G9 Workstation", "HP", "Z2 Tower G9", "Desktop", "Workstation",
+       "Tower workstation for CAD, rendering and data analysis workloads.",
+       "89900.00", "78000.00", 5, [("Processor", "Intel Core i7"), ("RAM", "32 GB"), ("GPU", "NVIDIA RTX A2000"), ("Storage", "1 TB NVMe SSD")],
+       ["ISV certified", "Tool-free expansion"], 36, ["workstation", "cad", "rendering"],
+       ["Enterprise", "Education"], ["Software Development", "3D Design"], "Certified performance for professional applications.", "Large footprint."),
+    _p("Computer", "COM", 4, "Intel NUC 13 Pro Mini PC", "Intel", "NUC 13 Pro", "Desktop", "Mini PC",
+       "Small-footprint mini PC suited to digital signage, kiosks and light office use.",
+       "17900.00", "14900.00", 0, [("Processor", "Intel Core i5"), ("RAM", "8 GB"), ("Storage", "256 GB SSD")],
+       ["VESA mountable", "Dual HDMI"], 12, ["mini-pc", "signage"],
+       ["SME", "Education"], ["Digital Signage", "Office Productivity"], "Tiny size with solid performance.", "Limited expandability.", discontinued=True),
+    _p("Computer", "COM", 5, "Dell PowerEdge R250 Server", "Dell", "PowerEdge R250", "Server", "Rack Server",
+       "Entry-level 1U rack server for file, print and small application hosting.",
+       "62900.00", "54000.00", 3, [("Processor", "Intel Xeon E-2434"), ("RAM", "32 GB ECC"), ("Storage", "2 x 2 TB HDD"), ("Form Factor", "1U rack")],
+       ["Hot-plug drive options", "iDRAC remote management"], 36, ["server", "rack"],
+       ["SME", "Enterprise"], ["File Server", "Small Virtualization"], "Affordable entry into server infrastructure.", "Single CPU socket."),
+    # Networking
+    _p("Networking", "NET", 1, "Cisco Catalyst 1000 24-Port Switch", "Cisco", "C1000-24T-4G-L", "Switch", "Managed Switch",
+       "24-port Gigabit managed switch for small and branch office networks.",
+       "28900.00", "24500.00", 9, [("Ports", "24 x 1 GbE"), ("Uplinks", "4 x SFP"), ("Layer", "L2")],
+       ["VLAN support", "Fanless design"], 60, ["switch", "managed", "poe-free"],
+       ["SME", "Education"], ["Branch Office", "Campus Access"], "Simple, dependable access layer.", "No PoE."),
+    _p("Networking", "NET", 2, "MikroTik RB5009UG+S+IN Router", "MikroTik", "RB5009UG+S+IN", "Router", "Enterprise Router",
+       "High-throughput wired router with 10G SFP+ uplink for demanding small networks.",
+       "7900.00", "6400.00", 30, [("Ports", "7 x 1 GbE, 1 x 2.5 GbE, 1 x SFP+"), ("CPU", "Quad-core ARM64")],
+       ["RouterOS", "Hardware offload"], 12, ["router", "10g"],
+       ["SME", "ISP"], ["Routing", "VPN Gateway"], "Excellent price to performance.", "Steep learning curve for RouterOS."),
+    _p("Networking", "NET", 3, "Ubiquiti UniFi U6 Pro Access Point", "Ubiquiti", "U6-Pro", "Access Point", "Wi-Fi 6 Access Point",
+       "Wi-Fi 6 ceiling-mount access point for offices and classrooms.",
+       "5900.00", "4700.00", 40, [("Wi-Fi", "Wi-Fi 6 dual band"), ("Power", "802.3af PoE")],
+       ["Centralized controller", "Ceiling or wall mount"], 12, ["wifi", "access-point"],
+       ["SME", "Education"], ["Office Wi-Fi", "Classroom Coverage"], "Easy managed wireless coverage.", "PoE injector or switch required."),
+    _p("Networking", "NET", 4, "Fortinet FortiGate 60F Firewall", "Fortinet", "FG-60F", "Firewall", "Next-Generation Firewall",
+       "Next-generation firewall appliance for small branches with SD-WAN features.",
+       "32900.00", "27500.00", 6, [("Interfaces", "10 x GbE RJ45"), ("Firewall Throughput", "10 Gbps")],
+       ["Security fabric", "SD-WAN"], 12, ["firewall", "security"],
+       ["SME", "Enterprise"], ["Perimeter Security", "Branch VPN"], "Consolidated security in a compact box.", "Security subscriptions sold separately."),
+    _p("Networking", "NET", 5, "TP-Link UE300 USB Gigabit Adapter", "TP-Link", "UE300", "Network Adapter", "USB Ethernet Adapter",
+       "USB 3.0 to Gigabit Ethernet adapter for laptops without an Ethernet port.",
+       "490.00", "320.00", 120, [("Interface", "USB 3.0"), ("Speed", "10/100/1000 Mbps")],
+       ["Plug and play", "Compact"], 12, ["adapter", "usb", "ethernet"],
+       ["SME", "Education"], ["Laptop Connectivity"], "Instant wired connectivity.", "Limited to Gigabit speeds."),
+    # Peripherals
+    _p("Peripherals", "PER", 1, "Logitech MX Keys S Keyboard", "Logitech", "MX Keys S", "Accessory", "Keyboard & Mouse",
+       "Wireless backlit keyboard with multi-device pairing for productivity setups.",
+       "4290.00", "3300.00", 60, [("Connectivity", "Bluetooth / Bolt"), ("Battery", "Up to 10 days")],
+       ["Smart illumination", "Multi-device"], 12, ["keyboard", "wireless"],
+       ["SME", "Enterprise"], ["Office Productivity"], "Comfortable typing across devices.", "Not mechanical."),
+    _p("Peripherals", "PER", 2, "Logitech MX Master 3S Mouse", "Logitech", "MX Master 3S", "Accessory", "Keyboard & Mouse",
+       "Ergonomic wireless mouse with quiet clicks and precise scrolling.",
+       "3290.00", "2500.00", 75, [("Sensor", "8000 DPI"), ("Connectivity", "Bluetooth / Bolt")],
+       ["Quiet clicks", "MagSpeed scroll"], 12, ["mouse", "ergonomic"],
+       ["SME", "Enterprise"], ["Office Productivity", "Design Work"], "Precision and comfort.", "Large for small hands."),
+    _p("Peripherals", "PER", 3, "Dell UltraSharp U2723QE Monitor", "Dell", "U2723QE", "Monitor", "Business Monitor",
+       "27-inch 4K IPS monitor with USB-C hub for professional desks.",
+       "21900.00", "18200.00", 18, [("Screen Size", "27 in"), ("Resolution", "3840 x 2160"), ("Panel", "IPS Black")],
+       ["USB-C 90W power delivery", "Daisy-chain support"], 36, ["monitor", "4k", "usb-c"],
+       ["SME", "Enterprise"], ["Software Development", "Design Work"], "Sharp visuals and single-cable docking.", "60 Hz refresh only."),
+    _p("Peripherals", "PER", 4, "Lenovo ThinkPad Thunderbolt 4 Dock", "Lenovo", "40B00135", "Accessory", "Docking Station",
+       "Thunderbolt 4 docking station for connecting displays and peripherals with one cable.",
+       "8900.00", "7200.00", 12, [("Host Connection", "Thunderbolt 4"), ("Displays", "Up to dual 4K")],
+       ["Single-cable connection", "Ethernet port"], 36, ["dock", "thunderbolt"],
+       ["Enterprise"], ["Hot Desking"], "Fast desk setup.", "Needs a Thunderbolt or USB4 host."),
+    _p("Peripherals", "PER", 5, "Logitech C920 HD Pro Webcam", "Logitech", "C920", "Accessory", "Webcam",
+       "Full HD webcam for video conferencing and online teaching.",
+       "2190.00", "1600.00", 0, [("Resolution", "1080p 30fps"), ("Microphone", "Dual stereo")],
+       ["Autofocus", "Privacy-friendly mounting"], 24, ["webcam", "video"],
+       ["Education", "SME"], ["Video Conferencing"], "Clear video calls.", "No privacy shutter."),
+    # Laboratory
+    _p("Laboratory", "LAB", 1, "Rigol DP832 Programmable DC Power Supply", "Rigol", "DP832", "Power Supply", "Programmable DC",
+       "Triple-output programmable DC power supply for electronics benches.",
+       "29500.00", "24800.00", 7, [("Outputs", "3 channels"), ("Max Power", "195 W")],
+       ["Overvoltage protection", "Programmable timing"], 36, ["power-supply", "bench"],
+       ["Education", "Enterprise"], ["Circuit Prototyping"], "Versatile bench power.", "Needs ventilation space."),
+    _p("Laboratory", "LAB", 2, "Rigol DS1054Z Digital Oscilloscope", "Rigol", "DS1054Z", "Measurement Instrument", "Oscilloscope",
+       "4-channel 50 MHz digital oscilloscope for education and electronics debugging.",
+       "15900.00", "12900.00", 10, [("Bandwidth", "50 MHz"), ("Channels", "4"), ("Sample Rate", "1 GSa/s")],
+       ["Deep memory", "Serial decode options"], 36, ["oscilloscope", "test"],
+       ["Education", "SME"], ["Debugging", "Teaching Labs"], "Popular, capable entry scope.", "Bandwidth upgrade needs license."),
+    _p("Laboratory", "LAB", 3, "Keysight U1282A Handheld Multimeter", "Keysight", "U1282A", "Test Equipment", "Digital Multimeter",
+       "Handheld digital multimeter for field and lab electrical measurements.",
+       "13500.00", "11000.00", 15, [("Display", "40,000 counts"), ("Accuracy", "0.025% DC")],
+       ["True RMS", "Data logging"], 36, ["multimeter", "handheld"],
+       ["Enterprise", "Education"], ["Field Service"], "Accurate portable measurements.", "Battery-powered only."),
+    _p("Laboratory", "LAB", 4, "Siglent SDG2042X Function Generator", "Siglent", "SDG2042X", "Signal Source", "Function Generator",
+       "Dual-channel arbitrary waveform generator for signal testing.",
+       "27900.00", "23000.00", 4, [("Channels", "2"), ("Bandwidth", "40 MHz")],
+       ["Arbitrary waveforms", "Touchscreen"], 36, ["signal-generator", "waveform"],
+       ["Education", "Enterprise"], ["Signal Testing"], "Flexible waveform creation.", "Requires warm-up for best accuracy."),
+    _p("Laboratory", "LAB", 5, "Fluke 289 True-RMS Logging Multimeter", "Fluke", "289", "Test Equipment", "Digital Multimeter",
+       "Industrial multimeter with logging for troubleshooting complex systems.",
+       "24900.00", "20500.00", 0, [("Display", "50,000 counts"), ("Logging", "Up to 10,000 records")],
+       ["Low-pass filter", "Trend capture"], 36, ["multimeter", "industrial"],
+       ["Enterprise"], ["Maintenance"], "Industry-trusted measurements.", "Higher price.", discontinued=True),
+    # Monitoring
+    _p("Monitoring", "MON", 1, "Aqara Temperature and Humidity Sensor", "Aqara", "WSDCGQ11LM", "Environment", "Temperature Sensor",
+       "Zigbee sensor for temperature, humidity and pressure monitoring in server closets.",
+       "590.00", "380.00", 85, [("Protocol", "Zigbee 3.0"), ("Battery", "CR2032")],
+       ["Compact size", "Alerts via hub"], 12, ["sensor", "temperature"],
+       ["SME", "Education"], ["Server Room Monitoring"], "Cheap environmental visibility.", "Requires Zigbee hub."),
+    _p("Monitoring", "MON", 2, "Netatmo Smart Indoor Air Quality Monitor", "Netatmo", "NHC", "Environment", "Air quality",
+       "Indoor air quality monitor measuring CO2, temperature, humidity and noise.",
+       "3990.00", "3000.00", 20, [("Measures", "CO2, temperature, humidity, noise"), ("Connectivity", "Wi-Fi")],
+       ["App notifications", "Historical charts"], 24, ["air-quality", "co2"],
+       ["Education", "SME"], ["Office Wellness"], "Healthier indoor spaces.", "Cloud app required."),
+    _p("Monitoring", "MON", 3, "Zabbix Appliance Network Monitor", "Zabbix", "ZBX-APP-100", "Network Monitoring", "Network Monitoring Appliance",
+       "Network monitoring appliance for device availability, metrics and alerting.",
+       "45000.00", "37000.00", 3, [("Monitored Devices", "Up to 100"), ("Alerting", "Email and webhook")],
+       ["Auto-discovery", "Custom dashboards"], 12, ["network", "monitoring"],
+       ["SME", "Enterprise"], ["Network Operations"], "Centralized infrastructure visibility.", "Initial tuning needed."),
+    _p("Monitoring", "MON", 4, "APC Smart-UPS Network Management Card 3", "APC", "AP9641", "Power Monitoring", "UPS Management Card",
+       "Network card providing remote monitoring and alerts for compatible UPS units.",
+       "12900.00", "10300.00", 8, [("Interface", "10/100/1000 Ethernet"), ("Protocols", "SNMP, HTTPS")],
+       ["Environmental probe support", "Email alerts"], 24, ["ups", "power", "snmp"],
+       ["Enterprise", "SME"], ["Power Monitoring"], "Remote UPS visibility.", "Compatible UPS models only."),
+    _p("Monitoring", "MON", 5, "Hikvision DS-2CD2143G2-I IP Camera", "Hikvision", "DS-2CD2143G2-I", "Surveillance", "IP Camera",
+       "4 MP fixed dome IP camera for surveillance monitoring.",
+       "3490.00", "2600.00", 35, [("Resolution", "4 MP"), ("Night Vision", "IR up to 30 m"), ("Power", "PoE")],
+       ["Smart event detection", "H.265+"], 24, ["camera", "surveillance"],
+       ["SME", "Government"], ["Site Security"], "Clear coverage with efficient storage.", "Recorder sold separately."),
+]
+
+
+def _validate_dataset() -> None:
+    assert len(PRODUCTS) == 25, "seed dataset must contain 25 products"
+    assert len({p["sku"] for p in PRODUCTS}) == 25, "SKUs must be unique"
+    for category in CATEGORIES:
+        count = sum(p["category"] == category for p in PRODUCTS)
+        assert count == 5, f"{category} has {count} products, expected 5"
+    for p in PRODUCTS:
+        assert len(p["description"]) >= 10
+
+
+def _guard_reset(session: Session) -> None:
+    if settings.environment.lower() not in {"development", "dev", "local"}:
+        raise SystemExit(
+            f"Refusing --reset-products: ENVIRONMENT is '{settings.environment}', not development."
+        )
+    foreign_keys = [
+        (table, fk.parent.name)
+        for table in inspect(engine).get_table_names()
+        for fk in inspect(engine).get_foreign_keys(table)
+        if fk["referred_table"] == "products"
+    ]
+    if foreign_keys:
+        raise SystemExit(f"Refusing --reset-products: tables reference products: {foreign_keys}")
+    print(f"Target database: {settings.database_path}")
+
+
+def seed(reset: bool) -> int:
+    _validate_dataset()
+    with SessionLocal() as session:
+        try:
+            if reset:
+                _guard_reset(session)
+                removed = session.execute(delete(Product)).rowcount
+                print(f"Reset: deleted {removed} existing product row(s).")
+            existing = set(
+                session.scalars(select(Product.sku).where(Product.sku.like(f"{SEED_SKU_PREFIX}%")))
+            )
+            inserted: dict[str, int] = {c: 0 for c in CATEGORIES}
+            skipped = 0
+            for data in PRODUCTS:
+                if data["sku"] in existing:
+                    skipped += 1
+                    continue
+                values = dict(data)
+                collections = {field: values.pop(field) for field in COLLECTION_FIELDS}
+                product = Product(**values)
+                _set_collections(product, collections)
+                session.add(product)
+                inserted[data["category"]] += 1
+            session.commit()
+        except SystemExit:
+            session.rollback()
+            raise
+        except Exception as error:
+            session.rollback()
+            print(f"Seeding failed, rolled back: {error}", file=sys.stderr)
+            return 1
+        total = session.scalar(select(func.count()).select_from(Product))
+    print(f"Inserted {sum(inserted.values())} product(s), skipped {skipped} existing.")
+    for category, count in inserted.items():
+        print(f"  {category}: {count}")
+    print(f"Total rows in products: {total}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--reset-products",
+        action="store_true",
+        help="DEVELOPMENT ONLY: delete all rows from products before seeding.",
+    )
+    return seed(parser.parse_args().reset_products)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

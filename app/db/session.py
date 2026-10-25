@@ -1,9 +1,20 @@
 from collections.abc import Generator
 
-from sqlalchemy import URL, create_engine
+from sqlalchemy import URL, create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
+
+
+
+@event.listens_for(Engine, "connect")
+def enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
+    # SQLite ignores foreign keys (and ON DELETE CASCADE) unless enabled per connection.
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 
 settings.database_path.parent.mkdir(parents=True, exist_ok=True)
 

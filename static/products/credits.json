@@ -1,0 +1,227 @@
+{
+  "MOCK-COM-001": {
+    "file": "MOCK-COM-001.jpg",
+    "commons_title": "File:ThinkPad T14.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:ThinkPad_T14.jpg",
+    "author": "Edvard10",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-COM-002": {
+    "file": "MOCK-COM-002.jpg",
+    "commons_title": "File:Dell OptiPlex 3060 SFF.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Dell_OptiPlex_3060_SFF.jpg",
+    "author": "TheDragonFire300",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "MOCK-COM-003": {
+    "file": "MOCK-COM-003.jpg",
+    "commons_title": "File:HP Z820 Workstation.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:HP_Z820_Workstation.jpg",
+    "author": "Vernon Chan",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-COM-004": {
+    "file": "MOCK-COM-004.jpg",
+    "commons_title": "File:Intel NUC8.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Intel_NUC8.jpg",
+    "author": "Laserlicht",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-COM-005": {
+    "file": "MOCK-COM-005.jpg",
+    "commons_title": "File:Dell PowerEdge servers.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Dell_PowerEdge_servers.jpg",
+    "author": "Dell Inc.",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "MOCK-NET-001": {
+    "file": "MOCK-NET-001.jpg",
+    "commons_title": "File:Cisco small business SG300-28 28-port Gigabit Ethernet rackmount switch.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Cisco_small_business_SG300-28_28-port_Gigabit_Ethernet_rackmount_switch.jpg",
+    "author": "Dsimic",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "MOCK-NET-002": {
+    "file": "MOCK-NET-002.jpg",
+    "commons_title": "File:MikroTik hAP ac2.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:MikroTik_hAP_ac2.jpg",
+    "author": "Uhernandez",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0"
+  },
+  "MOCK-NET-003": {
+    "file": "MOCK-NET-003.jpg",
+    "commons_title": "File:Access Point UniFi.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Access_Point_UniFi.jpg",
+    "author": "Sabbo91",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-NET-004": {
+    "file": "MOCK-NET-004.jpg",
+    "commons_title": "File:Fortinet FortiGate 6501F.png",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Fortinet_FortiGate_6501F.png",
+    "author": "Premeditated",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-NET-005": {
+    "file": "MOCK-NET-005.jpg",
+    "commons_title": "File:TP-Link UE300 ethernet USB adapter HS1.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:TP-Link_UE300_ethernet_USB_adapter_HS1.jpg",
+    "author": "Hayden Schiff",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "MOCK-PER-001": {
+    "file": "MOCK-PER-001.jpg",
+    "commons_title": "File:Logitech MX Keys YR0073 Wireless Keyboard.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Keys_YR0073_Wireless_Keyboard.jpg",
+    "author": "TaurusEmerald",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-PER-002": {
+    "file": "MOCK-PER-002.jpg",
+    "commons_title": "File:Logitech MX Master 3S HS01.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_HS01.jpg",
+    "author": "Hayden Schiff",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "MOCK-PER-003": {
+    "file": "MOCK-PER-003.jpg",
+    "commons_title": "File:3x Dell Ultrasharps.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:3x_Dell_Ultrasharps.jpg",
+    "author": "andytb",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "MOCK-PER-004": {
+    "file": "MOCK-PER-004.jpg",
+    "commons_title": "File:Lenovo ThinkPad Mini Dock Plus Series 3 with USB 3.0 (Type 4338) 01.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Lenovo_ThinkPad_Mini_Dock_Plus_Series_3_with_USB_3.0_(Type_4338)_01.jpg",
+    "author": "Siarhei Besarab",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-PER-005": {
+    "file": "MOCK-PER-005.jpg",
+    "commons_title": "File:Webcam (Logitech c922).jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Webcam_(Logitech_c922).jpg",
+    "author": "Zsinytwiki",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-LAB-001": {
+    "file": "MOCK-LAB-001.jpg",
+    "commons_title": "File:Rigol DP832 Power Supply Teardown SAM 9875 (9604552327).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Rigol_DP832_Power_Supply_Teardown_SAM_9875_(9604552327).jpg",
+    "author": "Dave Jones from Australia",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-LAB-002": {
+    "file": "MOCK-LAB-002.jpg",
+    "commons_title": "File:RIGOL DS1054Z Digital Storage Oscilloscope.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:RIGOL_DS1054Z_Digital_Storage_Oscilloscope.jpg",
+    "author": "Draconichiaro",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-LAB-003": {
+    "file": "MOCK-LAB-003.jpg",
+    "commons_title": "File:Keysight U1461A Insulation Resistance Multimeter Teardown (27837790811).jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Keysight_U1461A_Insulation_Resistance_Multimeter_Teardown_(27837790811).jpg",
+    "author": "Dave Jones from Australia",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-LAB-004": {
+    "file": "MOCK-LAB-004.jpg",
+    "commons_title": "File:20260422 Wrocław hackerspace testing led driver 12v PWM80 Rigol-DP832 Siglent-SDG2042X.webp",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:20260422_Wroc%C5%82aw_hackerspace_testing_led_driver_12v_PWM80_Rigol-DP832_Siglent-SDG2042X.webp",
+    "author": "Alexey Vazhnov",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-LAB-005": {
+    "file": "MOCK-LAB-005.jpg",
+    "commons_title": "File:Fluke 70 series II multimeter (connected) 01.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Fluke_70_series_II_multimeter_(connected)_01.jpg",
+    "author": "OliCol11",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-MON-001": {
+    "file": "MOCK-MON-001.jpg",
+    "commons_title": "File:AM2302 (DHT22) digital temperature and humidity sensor module.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:AM2302_(DHT22)_digital_temperature_and_humidity_sensor_module.jpg",
+    "author": "Suyash Dwivedi",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-MON-002": {
+    "file": "MOCK-MON-002.jpg",
+    "commons_title": "File:Overview of Netatmo Weather Interior module in Michle, Prague.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Overview_of_Netatmo_Weather_Interior_module_in_Michle,_Prague.jpg",
+    "author": "Jiří Sedláček",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-MON-003": {
+    "file": "MOCK-MON-003.jpg",
+    "commons_title": "File:Zabbix 4.0 web UI.png",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Zabbix_4.0_web_UI.png",
+    "author": "Syced",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-MON-004": {
+    "file": "MOCK-MON-004.jpg",
+    "commons_title": "File:APC AP9606 Web-SNMP Management Card.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:APC_AP9606_Web-SNMP_Management_Card.jpg",
+    "author": "Dsimic",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-MON-005": {
+    "file": "MOCK-MON-005.jpg",
+    "commons_title": "File:Bullet camera and Vandal Dome camera.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Bullet_camera_and_Vandal_Dome_camera.jpg",
+    "author": "Myotus",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  }
+}
