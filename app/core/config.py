@@ -12,9 +12,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_prefix: str = "/api/v1"
     database_path: Path = PROJECT_ROOT / "data" / "app.db"
+    document_storage_dir: Path = PROJECT_ROOT / "storage" / "documents"
     jwt_secret_key: SecretStr | None = None
 
-    @field_validator("database_path")
+    @field_validator("database_path", "document_storage_dir")
     @classmethod
     def resolve_database_path(cls, value: Path) -> Path:
         if value.is_absolute():
