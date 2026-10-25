@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /app/data/app.db
+      DOCUMENT_STORAGE_DIR: /app/storage/documents
+      ENVIRONMENT: development
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./data:/app/data
+      - ./storage/documents:/app/storage/documents
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../ai-sales-support-hub-frontend
+      dockerfile: Dockerfile
+    environment:
+  	NEXT_PUBLIC_API_BASE_URL: http://host.docker.internal:8081
+  	NEXT_PUBLIC_AI_AGENT_API_URL: http://host.docker.internal:8081/api/v1
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
