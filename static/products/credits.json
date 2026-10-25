@@ -215,13 +215,229 @@
     "license": "CC BY-SA 4.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
   },
-  "MOCK-MON-005": {
-    "file": "MOCK-MON-005.jpg",
-    "commons_title": "File:Bullet camera and Vandal Dome camera.jpg",
+  "MOCK-KBD-001": {
+    "file": "MOCK-KBD-001.jpg",
+    "commons_title": "File:Keychron K8 Non-Backlight Wireless Mechanical Keyboard - 52772912798.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Keychron_K8_Non-Backlight_Wireless_Mechanical_Keyboard_-_52772912798.jpg",
+    "author": "Triple-green",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-KBD-002": {
+    "file": "MOCK-KBD-002.jpg",
+    "commons_title": "File:Razer BlackWidow Ultimate 2014 Elite Mechanical Gaming Keyboard.jpg",
     "match": "similar",
-    "source_page": "https://commons.wikimedia.org/wiki/File:Bullet_camera_and_Vandal_Dome_camera.jpg",
-    "author": "Myotus",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Razer_BlackWidow_Ultimate_2014_Elite_Mechanical_Gaming_Keyboard.jpg",
+    "author": "osman.gucel",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-KBD-003": {
+    "file": "MOCK-KBD-003.jpg",
+    "commons_title": "File:DasKeyboard (1).jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:DasKeyboard_(1).jpg",
+    "author": "Thomas Cloer",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "MOCK-KBD-004": {
+    "file": "MOCK-KBD-004.jpg",
+    "commons_title": "File:Apple Magic Keyboard - US.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Apple_Magic_Keyboard_-_US.jpg",
+    "author": "Fletcher",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "MOCK-KBD-005": {
+    "file": "MOCK-KBD-005.jpg",
+    "commons_title": "File:Microsoft Sculpt ergonomic keyboard (1).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Microsoft_Sculpt_ergonomic_keyboard_(1).jpg",
+    "author": "erocsid",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-MSE-001": {
+    "file": "MOCK-MSE-001.jpg",
+    "commons_title": "File:Razer DeathAdder Elite-front oblique-ar 16to10-fs PNr°0465.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Razer_DeathAdder_Elite-front_oblique-ar_16to10-fs_PNr%C2%B00465.jpg",
+    "author": "D-Kuru",
+    "license": "CC BY-SA 3.0 at",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/at/deed.en"
+  },
+  "MOCK-MSE-002": {
+    "file": "MOCK-MSE-002.jpg",
+    "commons_title": "File:Logitech-g502 (13971829039).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Logitech-g502_(13971829039).jpg",
+    "author": "Sinchen.Lin",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-MSE-003": {
+    "file": "MOCK-MSE-003.jpg",
+    "commons_title": "File:Magic Mouse.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Magic_Mouse.jpg",
+    "author": "Yutaka Tsutano from Lincoln, United States",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-MSE-004": {
+    "file": "MOCK-MSE-004.jpg",
+    "commons_title": "File:Microsoft Pro IntelliMouse -- 1.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Microsoft_Pro_IntelliMouse_--_1.jpg",
+    "author": "Pathfinbird",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-MSE-005": {
+    "file": "MOCK-MSE-005.jpg",
+    "commons_title": "File:Rival Mouse by SteelSeries, FACEIT (2018, Cropped).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Rival_Mouse_by_SteelSeries,_FACEIT_(2018,_Cropped).jpg",
+    "author": "Kent Madsen",
     "license": "CC BY-SA 4.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-LPT-001": {
+    "file": "MOCK-LPT-001.jpg",
+    "commons_title": "File:M2 Macbook Air Starlight model.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Starlight_model.jpg",
+    "author": "KKPCW（Kyu3）",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-LPT-002": {
+    "file": "MOCK-LPT-002.jpg",
+    "commons_title": "File:DELL XPS 13 and 15 (37080596413).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:DELL_XPS_13_and_15_(37080596413).jpg",
+    "author": "Tinh tế Photo",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-LPT-003": {
+    "file": "MOCK-LPT-003.jpg",
+    "commons_title": "File:ASUS ZenBook Duo UX481FL.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:ASUS_ZenBook_Duo_UX481FL.jpg",
+    "author": "KKPCW",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-LPT-004": {
+    "file": "MOCK-LPT-004.jpg",
+    "commons_title": "File:Acer Swift 7 20201101a.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Acer_Swift_7_20201101a.jpg",
+    "author": "Solomon203",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-LPT-005": {
+    "file": "MOCK-LPT-005.jpg",
+    "commons_title": "File:Microsoft Surface Laptop 7.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Microsoft_Surface_Laptop_7.jpg",
+    "author": "StrangeApparition2011",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "MOCK-MNT-001": {
+    "file": "MOCK-MNT-001.jpg",
+    "commons_title": "File:BenQ monitors (XL2420T XL2410T).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:BenQ_monitors_(XL2420T_XL2410T).jpg",
+    "author": "Laineema",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-MNT-002": {
+    "file": "MOCK-MNT-002.jpg",
+    "commons_title": "File:Asus ProArt PA246Q monitor 1.JPG",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Asus_ProArt_PA246Q_monitor_1.JPG",
+    "author": "MKFI",
+    "license": "Public domain",
+    "license_url": ""
+  },
+  "MOCK-MNT-003": {
+    "file": "MOCK-MNT-003.jpg",
+    "commons_title": "File:Monitores led de aoc .jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Monitores_led_de_aoc_.jpg",
+    "author": "EEIM",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "MOCK-MNT-004": {
+    "file": "MOCK-MNT-004.jpg",
+    "commons_title": "File:LG UltraFine 5K Display.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:LG_UltraFine_5K_Display.jpg",
+    "author": "LG Electronics",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "MOCK-MNT-005": {
+    "file": "MOCK-MNT-005.jpg",
+    "commons_title": "File:Dell U3415W monitor and Latitude laptop (1).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Dell_U3415W_monitor_and_Latitude_laptop_(1).jpg",
+    "author": "William Murphy",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "MOCK-HDP-001": {
+    "file": "MOCK-HDP-001.jpg",
+    "commons_title": "File:Bose QuietComfort 35 II Wireless Headphones.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Bose_QuietComfort_35_II_Wireless_Headphones.jpg",
+    "author": "Carsonjp21",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "MOCK-HDP-002": {
+    "file": "MOCK-HDP-002.jpg",
+    "commons_title": "File:Headphones-Sennheiser-HD555.jpg",
+    "match": "similar",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Headphones-Sennheiser-HD555.jpg",
+    "author": "Adamantios",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "MOCK-HDP-003": {
+    "file": "MOCK-HDP-003.jpg",
+    "commons_title": "File:Sony MDR-7506 7615.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Sony_MDR-7506_7615.jpg",
+    "author": "Ashley Pomeroy",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "MOCK-HDP-004": {
+    "file": "MOCK-HDP-004.jpg",
+    "commons_title": "File:Audio Technica ATH-M50 Headphones.jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Audio_Technica_ATH-M50_Headphones.jpg",
+    "author": "Fletcher6",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "MOCK-HDP-005": {
+    "file": "MOCK-HDP-005.jpg",
+    "commons_title": "File:JBL LIVE 650 BTNC (Over-Ear Noise Cancelling Headphone). (51127342181).jpg",
+    "match": "exact",
+    "source_page": "https://commons.wikimedia.org/wiki/File:JBL_LIVE_650_BTNC_(Over-Ear_Noise_Cancelling_Headphone)._(51127342181).jpg",
+    "author": "MIKI Yoshihito from Sapporo City,Hokkaido., JAPAN",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
   }
 }
