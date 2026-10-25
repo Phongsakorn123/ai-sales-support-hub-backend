@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from decimal import Decimal
+
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
@@ -128,3 +130,53 @@ def delete_product(db: Session, product: Product) -> None:
     except SQLAlchemyError as error:
         db.rollback()
         raise ProductPersistenceError("Could not delete product") from error
+
+
+def search_products(
+    db: Session,
+    *,
+    category_terms: list[str] | None = None,
+    brand: str | None = None,
+    max_price: Decimal | None = None,
+    currency: str | None = None,
+    in_stock_only: bool = False,
+    limit: int = 50,
+) -> list[Product]:
+    """Filter products with parameterized ORM clauses; every filter is optional and combined with AND."""
+    statement = select(Product).options(*EAGER_COLLECTIONS)
+    if category_terms:
+        terms = [term.lower() for term in category_terms]
+        statement = statement.where(
+            Product.category.is_not(None) & func.lower(Product.category).in_(terms)
+            | Product.type.is_not(None) & func.lower(Product.type).in_(terms)
+            | Product.sub_type.is_not(None) & func.lower(Product.sub_type).in_(terms)
+        )
+    if brand:
+        statement = statement.where(func.lower(Product.brand) == brand.lower())
+    if max_price is not None:
+        statement = statement.where(Product.selling_price <= max_price)
+    if currency:
+        statement = statement.where(func.upper(Product.currency) == currency.upper())
+    if in_stock_only:
+        statement = statement.where(Product.stock_quantity > 0, Product.discontinued.is_(False))
+    try:
+        return list(db.scalars(statement.order_by(Product.id).limit(limit)).all())
+    except SQLAlchemyError as error:
+        db.rollback()
+        raise ProductPersistenceError("Could not search products") from error
+
+
+def list_catalog_taxonomy(db: Session) -> dict[str, list[str]]:
+    """Distinct category, type/sub-type and brand values currently present in the catalog."""
+    try:
+        categories = {v for v in db.scalars(select(Product.category).distinct()) if v}
+        types = {v for col in (Product.type, Product.sub_type) for v in db.scalars(select(col).distinct()) if v}
+        brands = {v for v in db.scalars(select(Product.brand).distinct()) if v}
+    except SQLAlchemyError as error:
+        db.rollback()
+        raise ProductPersistenceError("Could not read catalog taxonomy") from error
+    return {
+        "categories": sorted(categories),
+        "types": sorted(types),
+        "brands": sorted(brands),
+    }

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.ai_agent.api.product_suggestions import router as ai_router
 from app.backend.api.auth import router as auth_router
 from app.backend.api.documents import product_documents_router, router as documents_router
 from app.backend.api.products import router as products_router
@@ -25,6 +26,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(products_router, prefix=settings.api_prefix)
 app.include_router(documents_router, prefix=settings.api_prefix)
 app.include_router(product_documents_router, prefix=settings.api_prefix)
+app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
 
 

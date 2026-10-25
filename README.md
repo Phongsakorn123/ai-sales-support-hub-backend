@@ -60,6 +60,50 @@ directory. Clients never supply paths.
    mtime/size). Bump `version` and `updated_at` in the row if appropriate.
 3. Back up `data/app.db` before manual database edits.
 
+## AI product suggestions
+
+`POST /api/v1/ai/product-suggestions` (Bearer token required) turns a customer's natural-language
+requirements into grounded product recommendations. The code lives in `app/ai_agent/` and calls the
+existing product and document services; the Core Backend does not import it.
+
+Configuration (in `.env`, never commit real values): `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`
+(required, no default), `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_SECONDS`. Without a key and model
+the endpoint returns 503. The LLM is called through LangChain (`ChatOpenAI` against OpenRouter), so
+requirement text and selected catalog fields are sent to OpenRouter; `cost_price` never is.
+
+Workflow (one model call per request): the backend parses budget, currency, category, brand and a
+minimum RAM with deterministic rules, validated against the real catalog values, and retrieves matching
+in-stock products and short excerpts of their linked Markdown documents with ordinary queries. The
+model then ranks them and explains why. Names, prices, stock and document metadata always come from
+the database, and any product or document ID the model invents is discarded. Seeded documents are mock
+demo data and are labeled as such in every response.
+
+Exact matches and alternatives: the backend checks each candidate against the hard constraints it can
+verify from catalog data (category, preferred brand, stock, budget, minimum RAM) and sets
+`match_type` on every recommendation: `exact_match` (all met), `insufficient_data` (nothing failed
+but something, such as an unlisted RAM size, could not be verified) or `alternative` (a requirement
+is not met). Each item lists `satisfied_requirements`, `unmet_requirements` and
+`unverified_requirements`. Relaxed constraints only produce labelled alternatives, never exact
+matches; alternatives priced above 1.5x the budget are left out; out-of-stock products stay excluded
+unless `include_out_of_stock` is true. Results are ordered exact, then unverified, then alternatives,
+then by fewest unmet requirements, closeness to budget and RAM, relevance and ID. The model can reorder
+within a type and add reasons, but cannot change a classification. `max_products` is an upper bound.
+
+HTTP 429 from OpenRouter, including a 429 reported inside an HTTP 200 error body, is retried at most
+twice (about 5 s, then 10 s, or `Retry-After` capped at 20 s), within a 55 s total budget that stays
+under Nginx's default 60 s `proxy_read_timeout`. If the model still fails, the response is 200 with
+`ranking_source: "catalog_fallback"`: the same deterministic classification and order, with no AI
+ranking or reasoning.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/ai/product-suggestions \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"requirements": "A laptop for video editing under 50000 THB with at least 32GB RAM", "max_products": 3, "include_out_of_stock": false}'
+```
+
+Errors: 422 invalid input, 503 AI not configured. Model failures degrade to the labelled fallback above.
+Search is keyword-based; there is no vector search.
+
 ## Tests
 
 ```bash

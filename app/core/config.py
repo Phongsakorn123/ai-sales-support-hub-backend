@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     database_path: Path = PROJECT_ROOT / "data" / "app.db"
     document_storage_dir: Path = PROJECT_ROOT / "storage" / "documents"
     jwt_secret_key: SecretStr | None = None
+    openrouter_api_key: SecretStr | None = None
+    openrouter_model: str | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
 
     @field_validator("database_path", "document_storage_dir")
     @classmethod
