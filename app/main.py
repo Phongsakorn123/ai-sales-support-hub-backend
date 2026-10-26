@@ -1,5 +1,6 @@
 import re
 import secrets
+from html import escape
 
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -25,8 +26,8 @@ app = FastAPI(
     ],
 )
 
-SWAGGER_CSS_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/swagger-ui.css"
-SWAGGER_JS_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/swagger-ui-bundle.js"
+SWAGGER_CSS_URL = "/static/swagger-ui/swagger-ui.css"
+SWAGGER_JS_URL = "/static/swagger-ui/swagger-ui-bundle.js"
 SWAGGER_CSS_SRI = "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW"
 SWAGGER_JS_SRI = "sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23eHFbvNkXkw"
 
@@ -37,10 +38,10 @@ async def add_security_headers(request: Request, call_next):
     request.state.csp_nonce = nonce
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = (
-        f"default-src 'self'; script-src 'self' 'nonce-{nonce}' 'strict-dynamic' "
-        "https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; "
+        f"default-src 'self'; script-src 'self' 'nonce-{nonce}' 'strict-dynamic'; "
+        "style-src 'self' 'nonce-" + nonce + "'; "
         "style-src-attr 'unsafe-inline'; img-src 'self' data:; "
-        "font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self'; "
+        "font-src 'self' data:; connect-src 'self'; "
         "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     )
     response.headers["X-Frame-Options"] = "DENY"
@@ -63,8 +64,7 @@ async def swagger_ui(request: Request) -> HTMLResponse:
         swagger_favicon_url="",
     )
     html = response.body.decode("utf-8")
-    nonce = request.state.csp_nonce
-    html = re.sub(r"<script(?=[\s>])", f'<script nonce="{nonce}"', html)
+    nonce = escape(request.state.csp_nonce, quote=True)
     html = html.replace(
         f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}">',
         f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}" '
@@ -75,6 +75,7 @@ async def swagger_ui(request: Request) -> HTMLResponse:
         f'<script src="{SWAGGER_JS_URL}" integrity="{SWAGGER_JS_SRI}" '
         'crossorigin="anonymous"></script>',
     )
+    html = re.sub(r"<script(?=[\s>])", lambda _: f'<script nonce="{nonce}"', html)
     return HTMLResponse(content=html, status_code=response.status_code)
 
 STATIC_DIR = PROJECT_ROOT / "static"
