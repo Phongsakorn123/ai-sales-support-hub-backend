@@ -28,7 +28,7 @@ from app.core.config import PROJECT_ROOT, settings
 IMAGE_DIR = PROJECT_ROOT / "static" / "products"
 CREDITS_PATH = IMAGE_DIR / "credits.json"
 BACKUP_DIR = PROJECT_ROOT / "data" / "backups"
-DEFAULT_BASE_URL = "http://localhost:8081"
+DEFAULT_BASE_URL = "http://localhost:8002"
 URL_PATH = "/static/products"
 
 API = "https://commons.wikimedia.org/w/api.php"
