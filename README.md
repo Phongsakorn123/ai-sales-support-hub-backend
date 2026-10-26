@@ -22,10 +22,12 @@ idempotent. Stop the services with `docker compose down`; this keeps the named v
 
 OpenRouter is optional for starting the app. Without an API key, product suggestions still return
 catalog-filtered fallback results and are labelled as not AI-ranked. To enable OpenRouter ranking,
-create a local `.env` file (Compose reads it automatically) with `OPENROUTER_API_KEY` and
-`OPENROUTER_MODEL`, then run the same Compose command. Never commit `.env` or a real API key. The
-JWT secret is generated randomly on first startup and stored in the backend data volume. The
-default setup is for local demonstration; configure deployment-specific secrets before production.
+create a local `.env` file (Compose reads it automatically) and set only `OPENROUTER_API_KEY`.
+Compose defaults to the free `xingchen-agi/xing4.0-29b-a4b:free` model; override
+`OPENROUTER_MODEL` only if you want another model. After setting the key, run
+`docker compose up -d backend` to apply it. Never commit `.env` or a real API key. The JWT secret
+is generated randomly on first startup and stored in the backend data volume. The default setup is
+for local demonstration; configure deployment-specific secrets before production.
 
 For API-only local development, create a virtual environment, install `requirements.txt`, copy
 `.env.example` to `.env`, set `DATABASE_PATH` and `DOCUMENT_STORAGE_DIR` as needed, then run
@@ -98,8 +100,9 @@ directory. Clients never supply paths.
 requirements into grounded product recommendations. The code lives in `app/ai_agent/` and calls the
 existing product and document services; the Core Backend does not import it.
 
-Configuration (in `.env`, never commit real values): `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`,
-`OPENROUTER_BASE_URL`, and `OPENROUTER_TIMEOUT_SECONDS`. Without a key or model the endpoint
+Configuration (in `.env`, never commit real values): `OPENROUTER_API_KEY`, optional
+`OPENROUTER_MODEL` (defaults to `xingchen-agi/xing4.0-29b-a4b:free` in Compose),
+`OPENROUTER_BASE_URL`, and `OPENROUTER_TIMEOUT_SECONDS`. Without a key the endpoint
 returns labelled catalog-filtered fallback results without AI ranking. The LLM is called through
 LangChain (`ChatOpenAI` against OpenRouter), so
 requirement text and selected catalog fields are sent to OpenRouter; `cost_price` never is.

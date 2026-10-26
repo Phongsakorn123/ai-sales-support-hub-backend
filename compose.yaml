@@ -12,7 +12,7 @@ services:
       DOCUMENT_STORAGE_DIR: /app/storage/documents
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-xingchen-agi/xing4.0-29b-a4b:free}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENROUTER_TIMEOUT_SECONDS: ${OPENROUTER_TIMEOUT_SECONDS:-55}
       SEMANTIC_EMBEDDING_MODEL: ${SEMANTIC_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
