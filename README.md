@@ -106,6 +106,14 @@ Search is keyword-based; there is no vector search.
 
 ## Tests
 
+The default suite contains 10 essential backend regression cases and is the suite run in CI.
+
 ```bash
 .venv/bin/python -m unittest discover -s tests/unit
+```
+
+The broader existing suite is preserved under `tests/extended` and can be run separately:
+
+```bash
+.venv/bin/python -m unittest discover -s tests/extended
 ```
