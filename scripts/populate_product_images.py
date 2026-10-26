@@ -17,11 +17,11 @@ import sqlite3
 import subprocess
 import sys
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime
 from pathlib import Path
+
+import httpx
 
 from app.core.config import PROJECT_ROOT, settings
 
@@ -32,6 +32,7 @@ DEFAULT_BASE_URL = "http://localhost:8081"
 URL_PATH = "/static/products"
 
 API = "https://commons.wikimedia.org/w/api.php"
+ALLOWED_REMOTE_HOSTS = frozenset({"commons.wikimedia.org", "upload.wikimedia.org"})
 USER_AGENT = "AISalesSupportHubDemo/1.0 (local demo seed script)"
 MAX_DOWNLOAD_BYTES = 15 * 1024 * 1024
 MAX_OUTPUT_BYTES = 600 * 1024
@@ -98,19 +99,38 @@ SIGNATURES = (
 )
 
 
+def _validate_remote_url(url: str) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in ALLOWED_REMOTE_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
+        raise ValueError("remote URL must use HTTPS on an approved Wikimedia host")
+
+
 def _request(url: str, *, attempts: int = 4) -> bytes:
+    _validate_remote_url(url)
     for attempt in range(attempts):
         time.sleep(1.5 * (attempt * 4 + 1))
-        try:
-            request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(request, timeout=30) as response:
-                data = response.read(MAX_DOWNLOAD_BYTES + 1)
-            if len(data) > MAX_DOWNLOAD_BYTES:
-                raise ValueError(f"download exceeds {MAX_DOWNLOAD_BYTES} bytes: {url}")
-            return data
-        except urllib.error.HTTPError as error:
-            if error.code != 429 or attempt == attempts - 1:
-                raise
+        with httpx.stream(
+            "GET",
+            url,
+            headers={"User-Agent": USER_AGENT},
+            timeout=30,
+            follow_redirects=False,
+        ) as response:
+            if response.status_code == 429 and attempt < attempts - 1:
+                continue
+            response.raise_for_status()
+            data = bytearray()
+            for chunk in response.iter_bytes():
+                data.extend(chunk)
+                if len(data) > MAX_DOWNLOAD_BYTES:
+                    raise ValueError("download exceeds maximum size")
+            return bytes(data)
     raise RuntimeError("unreachable")
 
 

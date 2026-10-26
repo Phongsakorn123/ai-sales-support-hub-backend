@@ -80,13 +80,16 @@ def upgrade() -> None:
                     "position": position,
                 },
             )
-        for table, (column, _) in SIMPLE_TABLES.items():
+        for table, (column, value_type) in SIMPLE_TABLES.items():
+            child_table = sa.table(
+                table,
+                sa.column("product_id", sa.Integer()),
+                sa.column("value", value_type),
+                sa.column("position", sa.Integer()),
+            )
             for position, value in enumerate(_load(row[column])):
                 connection.execute(
-                    sa.text(
-                        f"INSERT INTO {table} (product_id, value, position) "
-                        "VALUES (:product_id, :value, :position)"
-                    ),
+                    child_table.insert(),
                     {"product_id": row["id"], "value": str(value), "position": position},
                 )
 

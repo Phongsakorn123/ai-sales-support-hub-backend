@@ -16,6 +16,12 @@ COPY static ./static
 
 RUN mkdir -p /app/data /app/storage/documents
 
+RUN groupadd --system --gid 10001 app \
+    && useradd --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
+    && chown -R app:app /app/data /app/storage
+
 EXPOSE 8000
+
+USER app
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

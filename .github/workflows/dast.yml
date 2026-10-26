@@ -18,14 +18,14 @@ jobs:
 
     steps:
       - name: Checkout backend
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: ${{ github.repository == 'Phongsakorn123/ai-sales-support-hub-backend' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || 'Phongsakorn123/ai-sales-support-hub-backend' }}
           ref: ${{ github.repository == 'Phongsakorn123/ai-sales-support-hub-backend' && github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.repository == 'Phongsakorn123/ai-sales-support-hub-backend' && github.event_name != 'pull_request' && github.ref_name || 'main' }}
           path: ai-sales-support-hub-backend
 
       - name: Checkout frontend
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: ${{ github.repository == 'Phongsakorn123/ai-sales-support-hub-frontend' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || 'Phongsakorn123/ai-sales-support-hub-frontend' }}
           ref: ${{ github.repository == 'Phongsakorn123/ai-sales-support-hub-frontend' && github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.repository == 'Phongsakorn123/ai-sales-support-hub-frontend' && github.event_name != 'pull_request' && github.ref_name || 'main' }}
@@ -52,7 +52,9 @@ jobs:
 
       - name: Build and start application
         working-directory: ai-sales-support-hub-backend
-        run: docker compose up --build -d
+        run: |
+          mkdir -p data storage/documents
+          APP_UID="$(id -u)" APP_GID="$(id -g)" docker compose up --build -d
 
       - name: Wait for application readiness
         id: readiness
@@ -69,21 +71,21 @@ jobs:
 
       - name: ZAP Baseline - Frontend
         if: always() && steps.readiness.outcome == 'success'
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: http://localhost:3001
           cmd_options: '-I -J zap-frontend.json -w zap-frontend.md -r zap-frontend.html'
 
       - name: ZAP Baseline - Backend API docs
         if: always() && steps.readiness.outcome == 'success'
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: http://localhost:8002/docs
           cmd_options: '-I -J zap-backend.json -w zap-backend.md -r zap-backend.html'
 
       - name: Upload DAST reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dast-reports-${{ github.run_id }}
           path: |

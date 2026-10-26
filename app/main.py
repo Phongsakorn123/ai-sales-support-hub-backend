@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.ai_agent.api.product_suggestions import router as ai_router
@@ -11,6 +13,7 @@ app = FastAPI(
     title=settings.app_name,
     description="Backend API for AI Sales Support Hub",
     version=settings.app_version,
+    docs_url=None,
     openapi_tags=[
         {
             "name": "Health",
@@ -18,6 +21,54 @@ app = FastAPI(
         }
     ],
 )
+
+SWAGGER_CSS_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/swagger-ui.css"
+SWAGGER_JS_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/swagger-ui-bundle.js"
+SWAGGER_CSS_SRI = "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW"
+SWAGGER_JS_SRI = "sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23eHFbvNkXkw"
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data:; font-src 'self' data: https://cdn.jsdelivr.net; "
+        "connect-src 'self'; object-src 'none'; base-uri 'self'; "
+        "form-action 'self'; frame-ancestors 'none'"
+    )
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    return response
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui() -> HTMLResponse:
+    response = get_swagger_ui_html(
+        openapi_url=app.openapi_url or "/openapi.json",
+        title=f"{app.title} - Swagger UI",
+        swagger_js_url=SWAGGER_JS_URL,
+        swagger_css_url=SWAGGER_CSS_URL,
+        swagger_favicon_url="",
+    )
+    html = response.body.decode("utf-8")
+    html = html.replace(
+        f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}">',
+        f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}" '
+        f'integrity="{SWAGGER_CSS_SRI}" crossorigin="anonymous">',
+    )
+    html = html.replace(
+        f'<script src="{SWAGGER_JS_URL}"></script>',
+        f'<script src="{SWAGGER_JS_URL}" integrity="{SWAGGER_JS_SRI}" '
+        'crossorigin="anonymous"></script>',
+    )
+    return HTMLResponse(content=html, status_code=response.status_code)
 
 STATIC_DIR = PROJECT_ROOT / "static"
 STATIC_DIR.mkdir(exist_ok=True)
