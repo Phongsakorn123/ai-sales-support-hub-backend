@@ -4,27 +4,28 @@ FastAPI + SQLite backend. API prefix: `/api/v1`. Interactive docs: `/docs`.
 
 ## Quick start with Docker Compose
 
-The Compose file builds and starts both the backend and its sibling frontend repository.
-Keep `ai-sales-support-hub-backend` and `ai-sales-support-hub-frontend` as sibling directories.
-From the backend repository, prepare local configuration and start the services:
+The Compose file builds and starts both the backend and its sibling frontend repository. Clone
+both repositories into sibling directories, then run this single command from the backend
+directory:
 
 ```bash
-cp .env.example .env
-# Edit .env: set a unique JWT_SECRET_KEY; set OPENROUTER_API_KEY and OPENROUTER_MODEL for AI ranking.
 docker compose up --build -d
-docker compose exec backend alembic upgrade head
-docker compose exec backend python -m scripts.seed_products
-docker compose exec backend python -m scripts.seed_consumer_catalog
-docker compose exec backend python -m scripts.seed_documents
-docker compose exec backend python -m scripts.reindex_product_embeddings
 ```
 
 The frontend is at <http://localhost:3001>; the backend is at <http://localhost:8002>, with
 Swagger UI at <http://localhost:8002/docs> and health check at <http://localhost:8002/health>.
-The initial embedding build downloads the configured multilingual model and may take several
-minutes. SQLite, model cache, and document files persist under the backend `data/` and
-`storage/documents/` directories. Seed commands are safe to rerun; they skip existing catalog
-SKUs and document records. Do not use `--reset-products` against a database you need to preserve.
+On first startup, the backend applies migrations, seeds the catalog and demo documents, and builds
+the local multilingual embedding index before the frontend starts. The first build downloads the
+embedding model and may take several minutes. Docker named volumes persist SQLite data, embeddings,
+the generated local JWT secret, and supporting document files across restarts. Seed operations are
+idempotent. Stop the services with `docker compose down`; this keeps the named volumes.
+
+OpenRouter is optional for starting the app. Without an API key, product suggestions still return
+catalog-filtered fallback results and are labelled as not AI-ranked. To enable OpenRouter ranking,
+create a local `.env` file (Compose reads it automatically) with `OPENROUTER_API_KEY` and
+`OPENROUTER_MODEL`, then run the same Compose command. Never commit `.env` or a real API key. The
+JWT secret is generated randomly on first startup and stored in the backend data volume. The
+default setup is for local demonstration; configure deployment-specific secrets before production.
 
 For API-only local development, create a virtual environment, install `requirements.txt`, copy
 `.env.example` to `.env`, set `DATABASE_PATH` and `DOCUMENT_STORAGE_DIR` as needed, then run
@@ -97,9 +98,10 @@ directory. Clients never supply paths.
 requirements into grounded product recommendations. The code lives in `app/ai_agent/` and calls the
 existing product and document services; the Core Backend does not import it.
 
-Configuration (in `.env`, never commit real values): `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`
-(required, no default), `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_SECONDS`. Without a key and model
-the endpoint returns 503. The LLM is called through LangChain (`ChatOpenAI` against OpenRouter), so
+Configuration (in `.env`, never commit real values): `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`,
+`OPENROUTER_BASE_URL`, and `OPENROUTER_TIMEOUT_SECONDS`. Without a key or model the endpoint
+returns labelled catalog-filtered fallback results without AI ranking. The LLM is called through
+LangChain (`ChatOpenAI` against OpenRouter), so
 requirement text and selected catalog fields are sent to OpenRouter; `cost_price` never is.
 
 Workflow (one model call per request): the backend parses budget, currency, category, brand and a
@@ -132,7 +134,7 @@ curl -X POST http://localhost:8002/api/v1/ai/product-suggestions \
   -d '{"requirements": "A laptop for video editing under 50000 THB with at least 32GB RAM", "max_products": 3, "include_out_of_stock": false}'
 ```
 
-Errors: 422 invalid input, 503 AI not configured. Model failures degrade to the labelled fallback above.
+Errors: 422 invalid input. Missing configuration and model failures degrade to the labelled fallback above.
 Product recommendations use hybrid retrieval: exact keyword matching over product names, brands, categories,
 specifications, features and use cases is fused with cosine-ranked local multilingual embeddings. The default
 embedding model is `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions); FastEmbed
@@ -163,14 +165,15 @@ plus a limitation explaining the degraded mode. Once the model is available, re-
 Run reindex after manually editing/adding product documents, because those files have no write API; documents
 are included in product vectors when available. No database volume is cleared by this migration or command.
 
-Docker setup from the backend repository (Compose starts both services):
+Docker setup from the backend repository (Compose starts both services and initializes the backend):
 
 ```bash
-docker compose up -d --build
-docker compose exec backend alembic upgrade head
-docker compose exec backend python -m scripts.reindex_product_embeddings --dry-run
-docker compose exec backend python -m scripts.reindex_product_embeddings
+docker compose up --build -d
 ```
+
+The backend entrypoint runs the migrations, idempotent seeds, and embedding backfill before
+starting the API. Embedding download or inference failures do not prevent the API from starting;
+the response reports keyword-only retrieval until a usable embedding index is available.
 
 `retrieval_mode` is `hybrid` only when semantic retrieval has usable indexed vectors; if model inference fails
 or no vectors are indexed, the API explicitly reports `keyword_fallback` instead of claiming hybrid search.

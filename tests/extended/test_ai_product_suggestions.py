@@ -669,12 +669,14 @@ class SuggestionEndpointTests(AiTestCase):
             self.assertNotIn("</customer_requirements>", variables["requirements"])
             self.assertNotIn("<candidate_products>", variables["requirements"])
 
-    def test_missing_api_key_returns_503(self) -> None:
+    def test_missing_api_key_returns_catalog_fallback(self) -> None:
         settings.openrouter_api_key = None
         settings.openrouter_model = "some/model"
         response = self.client.post(URL, json=BODY)
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["detail"], "The AI service is not configured.")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["ranking_source"], "catalog_fallback")
+        self.assertTrue(data["recommendations"])
 
     def test_model_failures_return_labelled_catalog_fallback(self) -> None:
         for error in (

@@ -13,15 +13,18 @@ COPY alembic ./alembic
 COPY alembic.ini .
 COPY scripts ./scripts
 COPY static ./static
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /app/data /app/storage/documents
 
 RUN groupadd --system --gid 10001 app \
     && useradd --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
-    && chown -R app:app /app/data /app/storage
+    && chown -R app:app /app/data /app/storage \
+    && chmod 755 /app/docker-entrypoint.sh
 
 EXPOSE 8000
 
 USER app
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

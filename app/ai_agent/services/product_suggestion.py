@@ -50,7 +50,7 @@ NO_DOCS_NOTE = (
 
 
 async def suggest_products(
-    db: Session, llm: StructuredLLM, request: ProductSuggestionRequest
+    db: Session, llm: StructuredLLM | None, request: ProductSuggestionRequest
 ) -> ProductSuggestionResponse:
     taxonomy = await run_in_threadpool(product_service.list_catalog_taxonomy, db)
     criteria = build_criteria(request.requirements, taxonomy)
@@ -76,34 +76,42 @@ async def suggest_products(
             limitations=limitations,
             data_sufficiency="insufficient",
             candidates_considered=0,
-            model=llm.model_name,
+            model=llm.model_name if llm else "OpenRouter not configured",
             retrieval_mode=retrieval.retrieval_mode,
             disclaimer=DISCLAIMER,
         )
 
     ranking_source = "ai"
-    try:
-        result = await generate_recommendations(
-            llm,
-            requirements=request.requirements,
-            parsed=parsed,
-            candidates=retrieval.candidates,
-            max_products=request.max_products,
-        )
-    except LLMError as error:
-        if isinstance(error, LLMNotConfiguredError):
-            raise
-
-        logger.warning(
-            "Model unavailable (%s); returning catalog filter matches",
-            type(error).__name__,
-        )
+    if llm is None:
+        logger.info("OpenRouter is not configured; returning catalog filter matches")
         ranking_source = "catalog_fallback"
         result = ValidatedRecommendations(
             fallback_recommendations(retrieval.candidates, request.max_products),
             [FALLBACK_NOTE],
-            "The AI model was unavailable. These products were selected and ordered by catalog data and rules, not AI ranking.",
+            "OpenRouter is not configured. These products were selected and ordered by catalog data and rules, not AI ranking.",
         )
+    else:
+        try:
+            result = await generate_recommendations(
+                llm,
+                requirements=request.requirements,
+                parsed=parsed,
+                candidates=retrieval.candidates,
+                max_products=request.max_products,
+            )
+        except LLMError as error:
+            if isinstance(error, LLMNotConfiguredError):
+                raise
+            logger.warning(
+                "Model unavailable (%s); returning catalog filter matches",
+                type(error).__name__,
+            )
+            ranking_source = "catalog_fallback"
+            result = ValidatedRecommendations(
+                fallback_recommendations(retrieval.candidates, request.max_products),
+                [FALLBACK_NOTE],
+                "The AI model was unavailable. These products were selected and ordered by catalog data and rules, not AI ranking.",
+            )
     if (
         ranking_source == "ai"
         and not result.recommendations
@@ -171,7 +179,7 @@ async def suggest_products(
         data_sufficiency=sufficiency,
         candidates_considered=len(retrieval.candidates),
         exact_match_count=exact_count,
-        model=llm.model_name,
+        model=llm.model_name if llm else "OpenRouter not configured",
         ranking_source=ranking_source,
         retrieval_mode=retrieval.retrieval_mode,
         disclaimer=DISCLAIMER,

@@ -31,14 +31,14 @@ router = APIRouter(
 )
 
 
-def get_llm() -> StructuredLLM:
+def get_llm() -> StructuredLLM | None:
     try:
         return OpenRouterClient.from_settings()
     except LLMNotConfiguredError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The AI service is not configured.",
-        ) from None
+        logger.info(
+            "OpenRouter is not configured; product search will use catalog fallback"
+        )
+        return None
 
 
 @router.post(
@@ -58,7 +58,6 @@ def get_llm() -> StructuredLLM:
         502: {
             "description": "The AI service failed, timed out or returned unusable output"
         },
-        503: {"description": "The AI service is not configured"},
         500: {"description": "Database operation failed"},
     },
 )

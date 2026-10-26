@@ -1,22 +1,42 @@
 services:
   backend:
-    user: "${APP_UID:-501}:${APP_GID:-20}"
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - .env
     environment:
+      APP_NAME: ${APP_NAME:-AI Sales Support Hub API}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      API_PREFIX: ${API_PREFIX:-/api/v1}
       DATABASE_PATH: /app/data/app.db
       DOCUMENT_STORAGE_DIR: /app/storage/documents
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_TIMEOUT_SECONDS: ${OPENROUTER_TIMEOUT_SECONDS:-55}
+      SEMANTIC_EMBEDDING_MODEL: ${SEMANTIC_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      SEMANTIC_EMBEDDING_CACHE_DIR: /app/data/fastembed
+      RETRIEVAL_RRF_K: ${RETRIEVAL_RRF_K:-60}
+      RETRIEVAL_KEYWORD_WEIGHT: ${RETRIEVAL_KEYWORD_WEIGHT:-1.0}
+      RETRIEVAL_SEMANTIC_WEIGHT: ${RETRIEVAL_SEMANTIC_WEIGHT:-1.0}
       HF_HOME: /app/data/huggingface
       HF_HUB_DISABLE_XET: "1"
-      ENVIRONMENT: development
     ports:
       - "8002:8000"
     volumes:
-      - ./data:/app/data
-      - ./storage/documents:/app/storage/documents
+      - backend_data:/app/data
+      - backend_documents:/app/storage/documents
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5m
     restart: unless-stopped
 
   frontend:
@@ -29,5 +49,10 @@ services:
     ports:
       - "3001:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  backend_data:
+  backend_documents:
