@@ -1,5 +1,6 @@
 import re
 import secrets
+from contextvars import ContextVar
 from html import escape
 
 from fastapi import FastAPI, Request
@@ -30,13 +31,17 @@ SWAGGER_CSS_URL = "/static/swagger-ui/swagger-ui.css"
 SWAGGER_JS_URL = "/static/swagger-ui/swagger-ui-bundle.js"
 SWAGGER_CSS_SRI = "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW"
 SWAGGER_JS_SRI = "sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23eHFbvNkXkw"
+CSP_NONCE: ContextVar[str] = ContextVar("csp_nonce")
 
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     nonce = secrets.token_urlsafe(18)
-    request.state.csp_nonce = nonce
-    response = await call_next(request)
+    nonce_token = CSP_NONCE.set(nonce)
+    try:
+        response = await call_next(request)
+    finally:
+        CSP_NONCE.reset(nonce_token)
     response.headers["Content-Security-Policy"] = (
         f"default-src 'self'; script-src 'self' 'nonce-{nonce}' 'strict-dynamic'; "
         "style-src 'self' 'nonce-" + nonce + "'; "
@@ -64,7 +69,7 @@ async def swagger_ui(request: Request) -> HTMLResponse:
         swagger_favicon_url="",
     )
     html = response.body.decode("utf-8")
-    nonce = escape(request.state.csp_nonce, quote=True)
+    nonce = escape(CSP_NONCE.get(), quote=True)
     html = html.replace(
         f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}">',
         f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}" '
