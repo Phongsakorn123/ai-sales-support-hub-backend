@@ -21,6 +21,7 @@ class SearchCriteria:
     keywords: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     min_ram_gb: float | None = None
+    query_text: str = ""
 
 
 def _canonical(value: str | None, allowed: list[str]) -> str | None:
@@ -81,6 +82,7 @@ def build_criteria(requirements: str, taxonomy: dict[str, list[str]]) -> SearchC
     """Derive validated search criteria without a model call."""
     rules = extract_by_rules(requirements, taxonomy)
     criteria = validate_requirements(to_extracted(rules), taxonomy)
+    criteria.query_text = requirements
     if rules.categories:
         criteria.category_terms = list(rules.categories)
         criteria.parsed.category = " / ".join(rules.categories)

@@ -6,7 +6,8 @@ FastAPI + SQLite backend. API prefix: `/api/v1`. Interactive docs: `/docs`.
 
 > **All seeded documents are MOCK DEMO DATA** generated from product catalog fields. They are
 > not official, reviewed or approved documents (`is_mock = true`, `approval_status = mock_demo`).
-> Search is plain keyword matching, **not** semantic/RAG search.
+> The documents endpoint's text search is plain keyword matching; product recommendations use the
+> separate hybrid retrieval described below.
 
 ### Storage and metadata
 
@@ -72,9 +73,9 @@ the endpoint returns 503. The LLM is called through LangChain (`ChatOpenAI` agai
 requirement text and selected catalog fields are sent to OpenRouter; `cost_price` never is.
 
 Workflow (one model call per request): the backend parses budget, currency, category, brand and a
-minimum RAM with deterministic rules, validated against the real catalog values, and retrieves matching
-in-stock products and short excerpts of their linked Markdown documents with ordinary queries. The
-model then ranks them and explains why. Names, prices, stock and document metadata always come from
+minimum RAM with deterministic rules, validated against the real catalog values, then retrieves candidates
+with keyword and local embedding search plus RRF. It loads short excerpts of their linked Markdown documents.
+The model then ranks them and explains why. Names, prices, stock and document metadata always come from
 the database, and any product or document ID the model invents is discarded. Seeded documents are mock
 demo data and are labeled as such in every response.
 
@@ -102,7 +103,58 @@ curl -X POST http://localhost:8081/api/v1/ai/product-suggestions \
 ```
 
 Errors: 422 invalid input, 503 AI not configured. Model failures degrade to the labelled fallback above.
-Search is keyword-based; there is no vector search.
+Product recommendations use hybrid retrieval: exact keyword matching over product names, brands, categories,
+specifications, features and use cases is fused with cosine-ranked local multilingual embeddings. The default
+embedding model is `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions); FastEmbed
+runs it locally with ONNX Runtime, so product text is not sent to an embedding API. The persisted SQLite
+`product_embeddings` table stores vectors separately from catalog rows. This keeps the current Docker/SQLite
+architecture simple; vector ranking is an exhaustive scan and is appropriate for the current small catalog.
+For very large catalogs, move the same vectors to an ANN vector store such as Qdrant.
+
+Keyword and semantic ranks are combined with weighted Reciprocal Rank Fusion:
+`sum(weight / (rrf_k + rank))`. Defaults are `k=60` and weight `1.0` for each source. This avoids adding raw
+keyword and cosine scores with different scales. The backend still evaluates stock, discontinued status,
+category, brand, budget/currency and minimum RAM from database facts after retrieval; semantic similarity
+cannot change those verdicts. Existing labelled-alternative and budget-ceiling behavior is preserved.
+
+Install the additive migration, then backfill the current catalog once:
+
+```bash
+.venv/bin/alembic upgrade head
+.venv/bin/python -m scripts.reindex_product_embeddings --dry-run
+.venv/bin/python -m scripts.reindex_product_embeddings
+```
+
+The first backfill downloads the model into `data/fastembed` (persistent in the existing Compose `./data`
+mount). Product creation and updates synchronously refresh their vector after the catalog commit; product
+deletion cascades its vector row. If the local model is unavailable, product CRUD remains successful and
+stale vectors are removed. Search then returns safe keyword results and includes `retrieval_mode="keyword_fallback"`
+plus a limitation explaining the degraded mode. Once the model is available, re-run the reindex command.
+Run reindex after manually editing/adding product documents, because those files have no write API; documents
+are included in product vectors when available. No database volume is cleared by this migration or command.
+
+Docker setup from the backend repository:
+
+```bash
+docker compose up -d --build backend
+docker compose exec backend alembic upgrade head
+docker compose exec backend python -m scripts.reindex_product_embeddings --dry-run
+docker compose exec backend python -m scripts.reindex_product_embeddings
+```
+
+`retrieval_mode` is `hybrid` only when semantic retrieval has usable indexed vectors; if model inference fails
+or no vectors are indexed, the API explicitly reports `keyword_fallback` instead of claiming hybrid search.
+The evaluation fixtures and actual local-model comparison are in `evaluation/`:
+
+```bash
+.venv/bin/python -m scripts.reindex_product_embeddings
+.venv/bin/python -m evaluation.run_hybrid_eval
+```
+
+The evaluation uses six representative English and Thai queries with known relevant fixture products and
+reports Recall@3 and MRR@3 for keyword-only and fused rankings. On 2026-10-26 with the default model, the
+measured scores were keyword Recall@3 0.500 / MRR@3 0.500 and hybrid Recall@3 1.000 / MRR@3 0.806.
+The fixture is a reproducible smoke-sized evaluation, not a production relevance benchmark.
 
 ## Tests
 

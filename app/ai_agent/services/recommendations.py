@@ -59,6 +59,12 @@ def candidate_payload(candidate: Candidate) -> dict:
             "unmet": candidate.unmet,
             "unverified": candidate.unverified,
         },
+        "retrieval": {
+            "keyword_rank": candidate.keyword_rank,
+            "semantic_rank": candidate.semantic_rank,
+            "semantic_score": candidate.semantic_score,
+            "rrf_score": candidate.rrf_score,
+        },
         "documents": [
             {
                 "document_id": e.document.id,

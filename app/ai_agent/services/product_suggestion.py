@@ -71,6 +71,7 @@ async def suggest_products(
             data_sufficiency="insufficient",
             candidates_considered=0,
             model=llm.model_name,
+            retrieval_mode=retrieval.retrieval_mode,
             disclaimer=DISCLAIMER,
         )
 
@@ -155,5 +156,6 @@ async def suggest_products(
         exact_match_count=exact_count,
         model=llm.model_name,
         ranking_source=ranking_source,
+        retrieval_mode=retrieval.retrieval_mode,
         disclaimer=DISCLAIMER,
     )

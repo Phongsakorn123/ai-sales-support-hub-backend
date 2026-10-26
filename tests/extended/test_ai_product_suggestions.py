@@ -111,9 +111,19 @@ class AiTestCase(unittest.TestCase):
         app.dependency_overrides[get_db] = override_db
         app.dependency_overrides[get_current_user] = lambda: object()
         self.client = TestClient(app)
+        self.semantic_patch = mock.patch(
+            "app.ai_agent.services.embeddings.semantic_search", return_value=([], 0)
+        )
+        self.semantic_patch.start()
+        self.embedding_sync_patch = mock.patch(
+            "app.ai_agent.services.embeddings.try_sync_product_embedding", return_value=True
+        )
+        self.embedding_sync_patch.start()
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
+        self.semantic_patch.stop()
+        self.embedding_sync_patch.stop()
         (settings.document_storage_dir, settings.jwt_secret_key,
          settings.openrouter_api_key, settings.openrouter_model) = self.saved
         self.engine.dispose()
@@ -496,8 +506,10 @@ class SuggestionEndpointTests(AiTestCase):
         self.use_llm(FakeLLM(recommendation=recommend_all))
         data = self.client.post(URL, json=BODY).json()
         for key in ("parsed_requirements", "recommendations", "summary", "limitations", "data_sufficiency",
-                    "candidates_considered", "model", "disclaimer", "ranking_source", "exact_match_count"):
+                    "candidates_considered", "model", "disclaimer", "ranking_source", "exact_match_count",
+                    "retrieval_mode"):
             self.assertIn(key, data)
+        self.assertEqual(data["retrieval_mode"], "keyword_fallback")
         for key in ("product_id", "name", "selling_price", "currency", "in_stock", "reasons",
                     "unmet_requirements", "supporting_documents", "match_type", "satisfied_requirements",
                     "unverified_requirements", "follow_up_question"):

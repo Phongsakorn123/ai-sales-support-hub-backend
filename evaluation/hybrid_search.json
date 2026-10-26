@@ -1,0 +1,17 @@
+[
+  {
+    "query": "I need a laptop for graphic design",
+    "query_th": "ต้องการโน้ตบุ๊กสำหรับออกแบบกราฟิก",
+    "relevant_skus": ["CREATIVE-LAPTOP"]
+  },
+  {
+    "query": "portable computer for business travel",
+    "query_th": "คอมพิวเตอร์พกพาสำหรับเดินทางไปทำงาน",
+    "relevant_skus": ["TRAVEL-LAPTOP"]
+  },
+  {
+    "query": "wireless headphones for video calls",
+    "query_th": "หูฟังไร้สายสำหรับประชุมทางวิดีโอ",
+    "relevant_skus": ["CALL-HEADSET"]
+  }
+]

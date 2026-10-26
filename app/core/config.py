@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     openrouter_model: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    semantic_embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    semantic_embedding_cache_dir: Path = PROJECT_ROOT / "data" / "fastembed"
+    retrieval_rrf_k: int = Field(default=60, ge=1, le=1000)
+    retrieval_keyword_weight: float = Field(default=1.0, gt=0, le=10)
+    retrieval_semantic_weight: float = Field(default=1.0, gt=0, le=10)
 
-    @field_validator("database_path", "document_storage_dir")
+    @field_validator("database_path", "document_storage_dir", "semantic_embedding_cache_dir")
     @classmethod
     def resolve_database_path(cls, value: Path) -> Path:
         if value.is_absolute():

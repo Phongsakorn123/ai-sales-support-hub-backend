@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 from datetime import datetime
 from decimal import Decimal
 from tempfile import TemporaryDirectory
@@ -11,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.backend.dependencies.auth import get_current_user
+from app.backend.models.product_embedding import ProductEmbedding
 from app.backend.models.user import User
 from app.db.base import Base
 from app.db.session import get_db
@@ -57,9 +59,14 @@ class ProductAPITests(unittest.TestCase):
             hashed_password="unused-test-hash",
         )
         self.client = TestClient(app, headers={"Authorization": "Bearer test-product-token"})
+        self.embedding_sync = mock.patch(
+            "app.ai_agent.services.embeddings.try_sync_product_embedding", return_value=True
+        )
+        self.embedding_sync_mock = self.embedding_sync.start()
 
     def tearDown(self) -> None:
         self.client.close()
+        self.embedding_sync.stop()
         if self.previous_dependency_override is None:
             app.dependency_overrides.pop(get_db, None)
         else:
@@ -104,6 +111,29 @@ class ProductAPITests(unittest.TestCase):
         updated_at = datetime.fromisoformat(product["updated_at"])
         self.assertIsNotNone(created_at.utcoffset())
         self.assertIsNotNone(updated_at.utcoffset())
+
+    def test_product_create_update_sync_embeddings_and_delete_cascades_index(self) -> None:
+        created = self.create_product(name="Creative laptop", description="For digital artwork")
+        self.embedding_sync_mock.assert_called_once()
+        self.assertEqual(self.embedding_sync_mock.call_args.args[1].id, created["id"])
+
+        with self.session_factory() as db:
+            db.add(ProductEmbedding(
+                product_id=created["id"], model_name="test", content_hash="test", vector=[0.1, 0.2]
+            ))
+            db.commit()
+
+        self.embedding_sync_mock.reset_mock()
+        updated = self.client.patch(
+            f"/api/v1/products/{created['id']}", json={"description": "For photo editing"}
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.embedding_sync_mock.assert_called_once()
+
+        deleted = self.client.delete(f"/api/v1/products/{created['id']}")
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+        with self.session_factory() as db:
+            self.assertIsNone(db.get(ProductEmbedding, created["id"]))
 
     SAMPLE = {
         "name": "ThinkPad T14 Gen 5",

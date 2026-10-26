@@ -86,4 +86,8 @@ class ProductSuggestionResponse(BaseModel):
         description="`catalog_fallback` means the AI model was unavailable and the products are filter "
         "matches only, without AI ranking or reasoning.",
     )
+    retrieval_mode: Literal["hybrid", "keyword_fallback"] = Field(
+        default="keyword_fallback",
+        description="`keyword_fallback` means semantic retrieval was unavailable or had no indexed products.",
+    )
     disclaimer: str

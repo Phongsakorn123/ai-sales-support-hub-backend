@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from decimal import Decimal
@@ -25,10 +26,23 @@ class DuplicateSkuError(ProductPersistenceError):
     pass
 
 
+logger = logging.getLogger(__name__)
+
+
 def _raise_persistence_error(error: SQLAlchemyError, message: str) -> None:
     if isinstance(error, IntegrityError) and "products.sku" in str(error.orig):
         raise DuplicateSkuError("SKU already exists") from error
     raise ProductPersistenceError(message) from error
+
+
+def _sync_product_embedding(db: Session, product: Product) -> None:
+    # Keep catalog writes available when the optional local embedding model cannot load.
+    try:
+        from app.ai_agent.services.embeddings import try_sync_product_embedding
+
+        try_sync_product_embedding(db, product)
+    except Exception as error:
+        logger.warning("Product embedding sync unavailable (product_id=%s, error=%s)", product.id, type(error).__name__)
 
 
 # Eager-load every child collection with one extra query each, avoiding N+1 lookups.
@@ -77,6 +91,7 @@ def create_product(db: Session, product_data: ProductCreate) -> Product:
     except SQLAlchemyError as error:
         db.rollback()
         _raise_persistence_error(error, "Could not create product")
+    _sync_product_embedding(db, product)
     return product
 
 
@@ -120,6 +135,7 @@ def update_product(
     except SQLAlchemyError as error:
         db.rollback()
         _raise_persistence_error(error, "Could not update product")
+    _sync_product_embedding(db, product)
     return product
 
 
