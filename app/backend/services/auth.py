@@ -38,9 +38,8 @@ def _signing_secret() -> str:
     if configured_secret is None:
         raise AuthenticationConfigurationError
     secret = configured_secret.get_secret_value()
-    if (
-        len(secret.encode("utf-8")) < 32
-        or secret.lower().startswith(("replace-", "change-me", "your-secret"))
+    if len(secret.encode("utf-8")) < 32 or secret.lower().startswith(
+        ("replace-", "change-me", "your-secret")
     ):
         raise AuthenticationConfigurationError
     return secret
@@ -153,7 +152,11 @@ def decode_access_token(token: str) -> int | None:
         return None
 
     subject = payload.get("sub")
-    if payload.get("type") != "access" or not isinstance(subject, str) or not subject.isdecimal():
+    if (
+        payload.get("type") != "access"
+        or not isinstance(subject, str)
+        or not subject.isdecimal()
+    ):
         return None
     user_id = int(subject)
     return user_id if user_id > 0 else None

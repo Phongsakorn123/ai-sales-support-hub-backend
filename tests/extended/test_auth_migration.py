@@ -64,9 +64,24 @@ class UserMigrationTests(unittest.TestCase):
                         "SELECT id, username, email, hashed_password FROM users ORDER BY id"
                     ).fetchall(),
                     [
-                        (1, "user-1", "existing-1@example.com", "existing-password-hash-1"),
-                        (2, "user-2", "existing-2@example.com", "existing-password-hash-2"),
-                        (3, "user-3", "existing-3@example.com", "existing-password-hash-3"),
+                        (
+                            1,
+                            "user-1",
+                            "existing-1@example.com",
+                            "existing-password-hash-1",
+                        ),
+                        (
+                            2,
+                            "user-2",
+                            "existing-2@example.com",
+                            "existing-password-hash-2",
+                        ),
+                        (
+                            3,
+                            "user-3",
+                            "existing-3@example.com",
+                            "existing-password-hash-3",
+                        ),
                     ],
                 )
                 unique_indexes = connection.execute(
@@ -100,9 +115,7 @@ class UserMigrationTests(unittest.TestCase):
                     product_schema_before,
                 )
                 self.assertEqual(
-                    connection.execute(
-                        "SELECT name, price FROM products"
-                    ).fetchone(),
+                    connection.execute("SELECT name, price FROM products").fetchone(),
                     ("Existing product", 42.5),
                 )
 
@@ -117,10 +130,7 @@ class UserMigrationTests(unittest.TestCase):
                 self.assertIn("users", tables)
                 self.assertNotIn(
                     "username",
-                    {
-                        row[1]
-                        for row in connection.execute("PRAGMA table_info(users)")
-                    },
+                    {row[1] for row in connection.execute("PRAGMA table_info(users)")},
                 )
                 self.assertEqual(
                     connection.execute(
@@ -181,13 +191,21 @@ class ProductCatalogMigrationTests(unittest.TestCase):
             database_path = Path(directory) / "catalog.db"
             env = {**os.environ, "DATABASE_PATH": str(database_path)}
             subprocess.run(
-                [str(ALEMBIC), "upgrade", "d1b9a7c4e2f0"], cwd=ROOT, env=env, check=True,
+                [str(ALEMBIC), "upgrade", "d1b9a7c4e2f0"],
+                cwd=ROOT,
+                env=env,
+                check=True,
                 capture_output=True,
             )
             with sqlite3.connect(database_path) as connection:
-                connection.execute("INSERT INTO products (name, price) VALUES ('Old', 12.50)")
+                connection.execute(
+                    "INSERT INTO products (name, price) VALUES ('Old', 12.50)"
+                )
             subprocess.run(
-                [str(ALEMBIC), "upgrade", "e3c5a1b8f7d2"], cwd=ROOT, env=env, check=True,
+                [str(ALEMBIC), "upgrade", "e3c5a1b8f7d2"],
+                cwd=ROOT,
+                env=env,
+                check=True,
                 capture_output=True,
             )
             with sqlite3.connect(database_path) as connection:
@@ -201,7 +219,10 @@ class ProductCatalogMigrationTests(unittest.TestCase):
             database_path = Path(directory) / "normalize.db"
             env = {**os.environ, "DATABASE_PATH": str(database_path)}
             subprocess.run(
-                [str(ALEMBIC), "upgrade", "e3c5a1b8f7d2"], cwd=ROOT, env=env, check=True,
+                [str(ALEMBIC), "upgrade", "e3c5a1b8f7d2"],
+                cwd=ROOT,
+                env=env,
+                check=True,
                 capture_output=True,
             )
             with sqlite3.connect(database_path) as connection:
@@ -210,26 +231,42 @@ class ProductCatalogMigrationTests(unittest.TestCase):
                 )
                 connection.execute(
                     "INSERT INTO products (name, selling_price, is_active, specifications, tags, sku) "
-                    "VALUES ('A', 5, 0, '[{\"key\": \"RAM\", \"value\": \"8 GB\"}]', '[\"x\", \"y\"]', 'S1')"
+                    'VALUES (\'A\', 5, 0, \'[{"key": "RAM", "value": "8 GB"}]\', \'["x", "y"]\', \'S1\')'
                 )
-                connection.execute("INSERT INTO products (name, selling_price) VALUES ('B', 6)")
+                connection.execute(
+                    "INSERT INTO products (name, selling_price) VALUES ('B', 6)"
+                )
             subprocess.run(
-                [str(ALEMBIC), "upgrade", "head"], cwd=ROOT, env=env, check=True, capture_output=True
+                [str(ALEMBIC), "upgrade", "head"],
+                cwd=ROOT,
+                env=env,
+                check=True,
+                capture_output=True,
             )
             with sqlite3.connect(database_path) as connection:
-                self.assertEqual(connection.execute("SELECT COUNT(*) FROM users").fetchone()[0], 1)
                 self.assertEqual(
-                    connection.execute("SELECT name, discontinued, sku FROM products ORDER BY id").fetchall(),
+                    connection.execute("SELECT COUNT(*) FROM users").fetchone()[0], 1
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT name, discontinued, sku FROM products ORDER BY id"
+                    ).fetchall(),
                     [("A", 1, "S1"), ("B", 0, None)],
                 )
                 self.assertEqual(
-                    connection.execute("SELECT key, value, position FROM product_specifications").fetchall(),
+                    connection.execute(
+                        "SELECT key, value, position FROM product_specifications"
+                    ).fetchall(),
                     [("RAM", "8 GB", 0)],
                 )
                 self.assertEqual(
-                    connection.execute("SELECT value FROM product_tags ORDER BY position").fetchall(),
+                    connection.execute(
+                        "SELECT value FROM product_tags ORDER BY position"
+                    ).fetchall(),
                     [("x",), ("y",)],
                 )
-                columns = {row[1] for row in connection.execute("PRAGMA table_info(products)")}
+                columns = {
+                    row[1] for row in connection.execute("PRAGMA table_info(products)")
+                }
                 self.assertNotIn("tags", columns)
                 self.assertNotIn("is_active", columns)

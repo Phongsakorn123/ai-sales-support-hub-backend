@@ -72,14 +72,22 @@ def product_text(db: Session, product: Product) -> str:
         *product.use_cases,
     ]
     docs = db.scalars(
-        select(Document).where(Document.product_id == product.id).order_by(Document.id).limit(MAX_DOCUMENTS)
+        select(Document)
+        .where(Document.product_id == product.id)
+        .order_by(Document.id)
+        .limit(MAX_DOCUMENTS)
     ).all()
     for document in docs:
         parts.extend([document.title, document.description])
         try:
-            parts.append(document_service.read_document_text(document)[:MAX_DOCUMENT_CHARS])
+            parts.append(
+                document_service.read_document_text(document)[:MAX_DOCUMENT_CHARS]
+            )
         except document_service.DocumentFileError:
-            logger.info("Skipping unreadable product document during embedding (product_id=%s)", product.id)
+            logger.info(
+                "Skipping unreadable product document during embedding (product_id=%s)",
+                product.id,
+            )
     return "\n".join(str(part).strip() for part in parts if part and str(part).strip())
 
 
@@ -87,10 +95,16 @@ def sync_product_embedding(db: Session, product: Product) -> None:
     """Upsert a current vector after a product write; caller handles failures without failing CRUD."""
     text = product_text(db, product)
     model_name = index_model_name()
-    # Version the index format so reindex refreshes vectors created before normalization.
-    digest = hashlib.sha256(f"{INDEX_FORMAT}\0{model_name}\0{text}".encode("utf-8")).hexdigest()
+
+    digest = hashlib.sha256(
+        f"{INDEX_FORMAT}\0{model_name}\0{text}".encode("utf-8")
+    ).hexdigest()
     existing = db.get(ProductEmbedding, product.id)
-    if existing and existing.content_hash == digest and existing.model_name == model_name:
+    if (
+        existing
+        and existing.content_hash == digest
+        and existing.model_name == model_name
+    ):
         return
     vector = embed_text(text)
     if existing:
@@ -98,12 +112,14 @@ def sync_product_embedding(db: Session, product: Product) -> None:
         existing.content_hash = digest
         existing.vector = vector
     else:
-        db.add(ProductEmbedding(
-            product_id=product.id,
-            model_name=model_name,
-            content_hash=digest,
-            vector=vector,
-        ))
+        db.add(
+            ProductEmbedding(
+                product_id=product.id,
+                model_name=model_name,
+                content_hash=digest,
+                vector=vector,
+            )
+        )
     db.commit()
 
 
@@ -111,14 +127,22 @@ def try_sync_product_embedding(db: Session, product: Product) -> bool:
     try:
         sync_product_embedding(db, product)
         return True
-    except Exception as error:  # Model downloads and inference must never break product CRUD.
+    except Exception as error:
         db.rollback()
         try:
-            db.execute(delete(ProductEmbedding).where(ProductEmbedding.product_id == product.id))
+            db.execute(
+                delete(ProductEmbedding).where(
+                    ProductEmbedding.product_id == product.id
+                )
+            )
             db.commit()
         except Exception:
             db.rollback()
-        logger.warning("Product embedding sync failed (product_id=%s, error=%s)", product.id, type(error).__name__)
+        logger.warning(
+            "Product embedding sync failed (product_id=%s, error=%s)",
+            product.id,
+            type(error).__name__,
+        )
         return False
 
 
@@ -128,7 +152,9 @@ def semantic_search(
     """Return (product_id, cosine score) rows and the count of usable indexed products."""
     query_vector = embed_text(query)
     rows = db.scalars(
-        select(ProductEmbedding).where(ProductEmbedding.model_name == index_model_name())
+        select(ProductEmbedding).where(
+            ProductEmbedding.model_name == index_model_name()
+        )
     ).all()
     scored: list[tuple[int, float]] = []
     usable = 0

@@ -38,15 +38,17 @@ MAX_DOWNLOAD_BYTES = 15 * 1024 * 1024
 MAX_OUTPUT_BYTES = 600 * 1024
 TARGET_WIDTH = 800
 
-# SKU -> Wikimedia Commons file. "exact" means the same model; "similar" means a closely
-# related model or product type used because no photo of the exact model was available.
+
 IMAGES: dict[str, tuple[str, str]] = {
     "MOCK-COM-001": ("File:ThinkPad T14.jpg", "exact"),
     "MOCK-COM-002": ("File:Dell OptiPlex 3060 SFF.jpg", "similar"),
     "MOCK-COM-003": ("File:HP Z820 Workstation.jpg", "similar"),
     "MOCK-COM-004": ("File:Intel NUC8.jpg", "similar"),
     "MOCK-COM-005": ("File:Dell PowerEdge servers.jpg", "similar"),
-    "MOCK-NET-001": ("File:Cisco small business SG300-28 28-port Gigabit Ethernet rackmount switch.jpg", "similar"),
+    "MOCK-NET-001": (
+        "File:Cisco small business SG300-28 28-port Gigabit Ethernet rackmount switch.jpg",
+        "similar",
+    ),
     "MOCK-NET-002": ("File:MikroTik hAP ac2.jpg", "similar"),
     "MOCK-NET-003": ("File:Access Point UniFi.jpg", "similar"),
     "MOCK-NET-004": ("File:Fortinet FortiGate 6501F.png", "similar"),
@@ -54,28 +56,61 @@ IMAGES: dict[str, tuple[str, str]] = {
     "MOCK-PER-001": ("File:Logitech MX Keys YR0073 Wireless Keyboard.jpg", "similar"),
     "MOCK-PER-002": ("File:Logitech MX Master 3S HS01.jpg", "exact"),
     "MOCK-PER-003": ("File:3x Dell Ultrasharps.jpg", "similar"),
-    "MOCK-PER-004": ("File:Lenovo ThinkPad Mini Dock Plus Series 3 with USB 3.0 (Type 4338) 01.jpg", "similar"),
+    "MOCK-PER-004": (
+        "File:Lenovo ThinkPad Mini Dock Plus Series 3 with USB 3.0 (Type 4338) 01.jpg",
+        "similar",
+    ),
     "MOCK-PER-005": ("File:Webcam (Logitech c922).jpg", "similar"),
-    "MOCK-LAB-001": ("File:Rigol DP832 Power Supply Teardown SAM 9875 (9604552327).jpg", "exact"),
+    "MOCK-LAB-001": (
+        "File:Rigol DP832 Power Supply Teardown SAM 9875 (9604552327).jpg",
+        "exact",
+    ),
     "MOCK-LAB-002": ("File:RIGOL DS1054Z Digital Storage Oscilloscope.jpg", "exact"),
-    "MOCK-LAB-003": ("File:Keysight U1461A Insulation Resistance Multimeter Teardown (27837790811).jpg", "similar"),
-    "MOCK-LAB-004": ("File:20260422 Wrocław hackerspace testing led driver 12v PWM80 Rigol-DP832 Siglent-SDG2042X.webp", "exact"),
-    "MOCK-LAB-005": ("File:Fluke 70 series II multimeter (connected) 01.jpg", "similar"),
-    "MOCK-MON-001": ("File:AM2302 (DHT22) digital temperature and humidity sensor module.jpg", "similar"),
-    "MOCK-MON-002": ("File:Overview of Netatmo Weather Interior module in Michle, Prague.jpg", "similar"),
+    "MOCK-LAB-003": (
+        "File:Keysight U1461A Insulation Resistance Multimeter Teardown (27837790811).jpg",
+        "similar",
+    ),
+    "MOCK-LAB-004": (
+        "File:20260422 Wrocław hackerspace testing led driver 12v PWM80 Rigol-DP832 Siglent-SDG2042X.webp",
+        "exact",
+    ),
+    "MOCK-LAB-005": (
+        "File:Fluke 70 series II multimeter (connected) 01.jpg",
+        "similar",
+    ),
+    "MOCK-MON-001": (
+        "File:AM2302 (DHT22) digital temperature and humidity sensor module.jpg",
+        "similar",
+    ),
+    "MOCK-MON-002": (
+        "File:Overview of Netatmo Weather Interior module in Michle, Prague.jpg",
+        "similar",
+    ),
     "MOCK-MON-003": ("File:Zabbix 4.0 web UI.png", "similar"),
     "MOCK-MON-004": ("File:APC AP9606 Web-SNMP Management Card.jpg", "similar"),
     "MOCK-MON-005": ("File:Bullet camera and Vandal Dome camera.jpg", "similar"),
-    "MOCK-KBD-001": ("File:Keychron K8 Non-Backlight Wireless Mechanical Keyboard - 52772912798.jpg", "exact"),
-    "MOCK-KBD-002": ("File:Razer BlackWidow Ultimate 2014 Elite Mechanical Gaming Keyboard.jpg", "similar"),
+    "MOCK-KBD-001": (
+        "File:Keychron K8 Non-Backlight Wireless Mechanical Keyboard - 52772912798.jpg",
+        "exact",
+    ),
+    "MOCK-KBD-002": (
+        "File:Razer BlackWidow Ultimate 2014 Elite Mechanical Gaming Keyboard.jpg",
+        "similar",
+    ),
     "MOCK-KBD-003": ("File:DasKeyboard (1).jpg", "similar"),
     "MOCK-KBD-004": ("File:Apple Magic Keyboard - US.jpg", "exact"),
     "MOCK-KBD-005": ("File:Microsoft Sculpt ergonomic keyboard (1).jpg", "exact"),
-    "MOCK-MSE-001": ("File:Razer DeathAdder Elite-front oblique-ar 16to10-fs PNr°0465.jpg", "exact"),
+    "MOCK-MSE-001": (
+        "File:Razer DeathAdder Elite-front oblique-ar 16to10-fs PNr°0465.jpg",
+        "exact",
+    ),
     "MOCK-MSE-002": ("File:Logitech-g502 (13971829039).jpg", "exact"),
     "MOCK-MSE-003": ("File:Magic Mouse.jpg", "exact"),
     "MOCK-MSE-004": ("File:Microsoft Pro IntelliMouse -- 1.jpg", "exact"),
-    "MOCK-MSE-005": ("File:Rival Mouse by SteelSeries, FACEIT (2018, Cropped).jpg", "exact"),
+    "MOCK-MSE-005": (
+        "File:Rival Mouse by SteelSeries, FACEIT (2018, Cropped).jpg",
+        "exact",
+    ),
     "MOCK-LPT-001": ("File:M2 Macbook Air Starlight model.jpg", "exact"),
     "MOCK-LPT-002": ("File:DELL XPS 13 and 15 (37080596413).jpg", "exact"),
     "MOCK-LPT-003": ("File:ASUS ZenBook Duo UX481FL.jpg", "similar"),
@@ -90,7 +125,10 @@ IMAGES: dict[str, tuple[str, str]] = {
     "MOCK-HDP-002": ("File:Headphones-Sennheiser-HD555.jpg", "similar"),
     "MOCK-HDP-003": ("File:Sony MDR-7506 7615.jpg", "exact"),
     "MOCK-HDP-004": ("File:Audio Technica ATH-M50 Headphones.jpg", "exact"),
-    "MOCK-HDP-005": ("File:JBL LIVE 650 BTNC (Over-Ear Noise Cancelling Headphone). (51127342181).jpg", "exact"),
+    "MOCK-HDP-005": (
+        "File:JBL LIVE 650 BTNC (Over-Ear Noise Cancelling Headphone). (51127342181).jpg",
+        "exact",
+    ),
 }
 
 SIGNATURES = (
@@ -156,7 +194,7 @@ def fetch_metadata(titles: list[str]) -> dict[str, dict]:
     )
     data = json.loads(_request(f"{API}?{query}"))
     pages = data["query"]["pages"]
-    # Commons normalizes titles (e.g. underscores), so map back through the normalization list.
+
     renamed = {item["from"]: item["to"] for item in data["query"].get("normalized", [])}
     by_title = {page["title"]: page for page in pages.values()}
     result = {}
@@ -168,7 +206,9 @@ def fetch_metadata(titles: list[str]) -> dict[str, dict]:
         meta = info.get("extmetadata", {})
 
         def text(key: str) -> str:
-            return re.sub(r"\s+", " ", re.sub("<[^>]+>", "", meta.get(key, {}).get("value", ""))).strip()
+            return re.sub(
+                r"\s+", " ", re.sub("<[^>]+>", "", meta.get(key, {}).get("value", ""))
+            ).strip()
 
         result[title] = {
             "download_url": info.get("thumburl") or info["url"],
@@ -201,8 +241,10 @@ def prepare_image(sku: str, entry: dict) -> Path:
             if target.read_bytes().startswith(b"\xff\xd8\xff"):
                 return target
         except ValueError:
-            pass  # existing file is invalid; fall through and rebuild it
-        raise SystemExit(f"{target} exists but is not a valid JPEG; remove it manually to rebuild.")
+            pass
+        raise SystemExit(
+            f"{target} exists but is not a valid JPEG; remove it manually to rebuild."
+        )
 
     data = _request(entry["download_url"])
     kind = _image_kind(data)
@@ -213,14 +255,25 @@ def prepare_image(sku: str, entry: dict) -> Path:
     try:
         decode_dimensions(source)
         result = _sips(
-            "-s", "format", "jpeg", "-s", "formatOptions", "78", "-Z", str(TARGET_WIDTH),
-            str(source), "--out", str(target),
+            "-s",
+            "format",
+            "jpeg",
+            "-s",
+            "formatOptions",
+            "78",
+            "-Z",
+            str(TARGET_WIDTH),
+            str(source),
+            "--out",
+            str(target),
         )
         if result.returncode != 0 or not target.exists():
             raise SystemExit(f"{sku}: conversion failed: {result.stderr.strip()[:200]}")
     finally:
         source.unlink(missing_ok=True)
-    if target.stat().st_size > MAX_OUTPUT_BYTES or not target.read_bytes().startswith(b"\xff\xd8\xff"):
+    if target.stat().st_size > MAX_OUTPUT_BYTES or not target.read_bytes().startswith(
+        b"\xff\xd8\xff"
+    ):
         size = target.stat().st_size
         target.unlink()
         raise SystemExit(f"{sku}: converted image invalid or too large ({size} bytes)")
@@ -230,7 +283,10 @@ def prepare_image(sku: str, entry: dict) -> Path:
 
 def backup_database(database_path: Path) -> Path:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    backup_path = BACKUP_DIR / f"{database_path.stem}.pre-images-{datetime.now():%Y%m%d-%H%M%S}.db"
+    backup_path = (
+        BACKUP_DIR
+        / f"{database_path.stem}.pre-images-{datetime.now():%Y%m%d-%H%M%S}.db"
+    )
     source = sqlite3.connect(f"file:{database_path}?mode=ro", uri=True)
     destination = sqlite3.connect(backup_path)
     try:
@@ -258,7 +314,9 @@ def backup_database(database_path: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--apply", action="store_true", help="back up and update image_url")
+    parser.add_argument(
+        "--apply", action="store_true", help="back up and update image_url"
+    )
     parser.add_argument(
         "--base-url",
         default=DEFAULT_BASE_URL,
@@ -278,7 +336,9 @@ def main() -> int:
     }
     missing = sorted(set(IMAGES) - set(rows))
     if missing:
-        print(f"SKUs in the mapping but not in the database: {missing}", file=sys.stderr)
+        print(
+            f"SKUs in the mapping but not in the database: {missing}", file=sys.stderr
+        )
 
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     titles = [title for title, _ in IMAGES.values()]
@@ -296,22 +356,44 @@ def main() -> int:
         width, height = decode_dimensions(path)
         url = f"{base_url}{URL_PATH}/{path.name}"
         credits[sku] = {
-            "file": path.name, "commons_title": title, "match": match,
-            "source_page": info["source_page"], "author": info["author"],
-            "license": info["license"], "license_url": info["license_url"],
+            "file": path.name,
+            "commons_title": title,
+            "match": match,
+            "source_page": info["source_page"],
+            "author": info["author"],
+            "license": info["license"],
+            "license_url": info["license_url"],
         }
         product_id, name, current = rows[sku]
-        plan.append((product_id, sku, name, url, current, f"{width}x{height}", path.stat().st_size))
+        plan.append(
+            (
+                product_id,
+                sku,
+                name,
+                url,
+                current,
+                f"{width}x{height}",
+                path.stat().st_size,
+            )
+        )
     CREDITS_PATH.write_text(json.dumps(credits, indent=2, ensure_ascii=False) + "\n")
 
     print("\nPlan:")
     for product_id, sku, name, url, current, size, nbytes in plan:
         state = "SKIP (already has image_url)" if current else "set"
-        print(f"  [{product_id:>2}] {sku} {name[:42]:<42} {size:>9} {nbytes//1024:>4} KB  {state}")
+        print(
+            f"  [{product_id:>2}] {sku} {name[:42]:<42} {size:>9} {nbytes//1024:>4} KB  {state}"
+        )
         print(f"       {url}")
 
-    to_update = [(url, product_id) for product_id, _, _, url, current, _, _ in plan if current is None]
-    existing = [(sku, current) for _, sku, _, _, current, _, _ in plan if current is not None]
+    to_update = [
+        (url, product_id)
+        for product_id, _, _, url, current, _, _ in plan
+        if current is None
+    ]
+    existing = [
+        (sku, current) for _, sku, _, _, current, _, _ in plan if current is not None
+    ]
     if existing:
         print(f"\nNot overwritten (existing image_url): {existing}")
     print(f"\n{len(plan)} validated, {len(to_update)} to update.")
@@ -326,9 +408,12 @@ def main() -> int:
     try:
         with connection:
             cursor = connection.executemany(
-                "UPDATE products SET image_url = ? WHERE id = ? AND image_url IS NULL", to_update
+                "UPDATE products SET image_url = ? WHERE id = ? AND image_url IS NULL",
+                to_update,
             )
-        print(f"Updated {cursor.rowcount if cursor.rowcount >= 0 else len(to_update)} product(s).")
+        print(
+            f"Updated {cursor.rowcount if cursor.rowcount >= 0 else len(to_update)} product(s)."
+        )
     except sqlite3.Error as error:
         print(f"Update rolled back: {error}", file=sys.stderr)
         return 1

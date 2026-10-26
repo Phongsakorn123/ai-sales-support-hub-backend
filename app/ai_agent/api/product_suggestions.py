@@ -55,7 +55,9 @@ def get_llm() -> StructuredLLM:
         "manufacturer evidence."
     ),
     responses={
-        502: {"description": "The AI service failed, timed out or returned unusable output"},
+        502: {
+            "description": "The AI service failed, timed out or returned unusable output"
+        },
         503: {"description": "The AI service is not configured"},
         500: {"description": "Database operation failed"},
     },
@@ -68,7 +70,9 @@ async def create_product_suggestions(
     try:
         return await suggest_products(db, llm, request)
     except LLMTimeoutError:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "The AI service timed out.") from None
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "The AI service timed out."
+        ) from None
     except LLMOutputError:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, "The AI service returned an unusable response."
@@ -80,10 +84,14 @@ async def create_product_suggestions(
         ) from None
     except LLMUpstreamError:
         raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY, "The AI service is unavailable or returned an error."
+            status.HTTP_502_BAD_GATEWAY,
+            "The AI service is unavailable or returned an error.",
         ) from None
     except (ProductPersistenceError, DocumentPersistenceError) as error:
-        logger.error("Product suggestion database error", exc_info=(type(error), error, error.__traceback__))
+        logger.error(
+            "Product suggestion database error",
+            exc_info=(type(error), error, error.__traceback__),
+        )
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             "A database error occurred while processing the suggestion request.",

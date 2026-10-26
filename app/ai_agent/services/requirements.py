@@ -31,11 +31,15 @@ def _canonical(value: str | None, allowed: list[str]) -> str | None:
     return lookup.get(value.strip().lower())
 
 
-def validate_requirements(extracted: ExtractedRequirements, taxonomy: dict[str, list[str]]) -> SearchCriteria:
+def validate_requirements(
+    extracted: ExtractedRequirements, taxonomy: dict[str, list[str]]
+) -> SearchCriteria:
     notes: list[str] = []
 
     category_terms: list[str] = []
-    category = _canonical(extracted.category, taxonomy["categories"] + taxonomy["types"])
+    category = _canonical(
+        extracted.category, taxonomy["categories"] + taxonomy["types"]
+    )
     if category:
         category_terms = [category]
     elif extracted.category:
@@ -46,18 +50,33 @@ def validate_requirements(extracted: ExtractedRequirements, taxonomy: dict[str, 
 
     budget: Decimal | None = None
     if extracted.max_budget is not None:
-        if math.isfinite(extracted.max_budget) and 0 < extracted.max_budget <= MAX_BUDGET:
+        if (
+            math.isfinite(extracted.max_budget)
+            and 0 < extracted.max_budget <= MAX_BUDGET
+        ):
             budget = Decimal(str(round(extracted.max_budget, 2)))
         else:
-            notes.append("The budget in the request could not be interpreted and was ignored.")
+            notes.append(
+                "The budget in the request could not be interpreted and was ignored."
+            )
 
-    currency = extracted.currency.upper() if extracted.currency and extracted.currency.isalpha() and len(extracted.currency) == 3 else None
+    currency = (
+        extracted.currency.upper()
+        if extracted.currency
+        and extracted.currency.isalpha()
+        and len(extracted.currency) == 3
+        else None
+    )
     if budget is not None and currency is None:
-        notes.append("The budget currency was not stated, so the budget was compared with catalog prices as listed.")
+        notes.append(
+            "The budget currency was not stated, so the budget was compared with catalog prices as listed."
+        )
 
     brand_filter = _canonical(extracted.preferred_brand, taxonomy["brands"])
     if extracted.preferred_brand and brand_filter is None:
-        notes.append(f"The preferred brand '{extracted.preferred_brand}' is not in the catalog.")
+        notes.append(
+            f"The preferred brand '{extracted.preferred_brand}' is not in the catalog."
+        )
 
     parsed = ParsedRequirements(
         category=category or extracted.category,

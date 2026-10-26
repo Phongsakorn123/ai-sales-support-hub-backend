@@ -1,6 +1,5 @@
 services:
   backend:
-    # These defaults match the current macOS workspace; override for other host UIDs.
     user: "${APP_UID:-501}:${APP_GID:-20}"
     build:
       context: .

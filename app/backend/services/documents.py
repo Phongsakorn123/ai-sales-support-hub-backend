@@ -59,7 +59,6 @@ def read_document_bytes(document: Document) -> bytes:
         raise DocumentFileError("Document file could not be read.") from error
 
 
-# Search cache keyed by path; entries are refreshed when the file's mtime or size changes.
 _cache: dict[Path, tuple[int, int, str]] = {}
 _cache_lock = threading.Lock()
 
@@ -132,7 +131,9 @@ def search_documents(
         hits = []
         for document in candidates:
             content = _cached_text(document) or ""
-            haystack = f"{document.title}\n{document.description or ''}\n{content}".lower()
+            haystack = (
+                f"{document.title}\n{document.description or ''}\n{content}".lower()
+            )
             if all(term in haystack for term in terms):
                 snippet = _snippet(content, terms[0]) if content else None
                 hits.append(SearchHit(document, snippet))

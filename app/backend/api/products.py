@@ -21,7 +21,9 @@ router = APIRouter(
 
 def _database_error(operation: str, error: ProductPersistenceError) -> HTTPException:
     if isinstance(error, DuplicateSkuError):
-        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SKU already exists.")
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="SKU already exists."
+        )
     logger.error(
         "Product %s failed",
         operation,
@@ -83,7 +85,9 @@ def get_product(product_id: int, db: Session = Depends(get_db)) -> Product:
     except ProductPersistenceError as error:
         raise _database_error("retrieval", error) from error
     if product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+        )
     return product
 
 
@@ -104,7 +108,9 @@ def update_product(
     try:
         product = product_service.get_product(db, product_id)
         if product is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+            )
         return product_service.update_product(db, product, product_data)
     except ProductPersistenceError as error:
         raise _database_error("update", error) from error
@@ -123,7 +129,9 @@ def delete_product(product_id: int, db: Session = Depends(get_db)) -> Response:
     try:
         product = product_service.get_product(db, product_id)
         if product is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+            )
         product_service.delete_product(db, product)
     except ProductPersistenceError as error:
         raise _database_error("deletion", error) from error

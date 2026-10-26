@@ -4,7 +4,9 @@ from typing import Literal
 from pydantic import BaseModel, Field, StringConstraints
 from typing import Annotated
 
-Requirements = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=2000)]
+Requirements = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=5, max_length=2000)
+]
 
 
 class ProductSuggestionRequest(BaseModel):
@@ -12,9 +14,12 @@ class ProductSuggestionRequest(BaseModel):
         description="The customer's needs in natural language.",
         examples=["A laptop for video editing under 50000 THB with at least 32GB RAM"],
     )
-    max_products: int = Field(default=3, ge=1, le=5, description="Maximum number of recommendations.")
+    max_products: int = Field(
+        default=3, ge=1, le=5, description="Maximum number of recommendations."
+    )
     include_out_of_stock: bool = Field(
-        default=False, description="Also consider out-of-stock and discontinued products."
+        default=False,
+        description="Also consider out-of-stock and discontinued products.",
     )
 
 
@@ -33,7 +38,9 @@ class SupportingDocument(BaseModel):
     document_id: str
     title: str
     document_type: str
-    is_mock: bool = Field(description="True means demo data, not verified manufacturer documentation.")
+    is_mock: bool = Field(
+        description="True means demo data, not verified manufacturer documentation."
+    )
     approval_status: str
     file_url: str
 
@@ -58,10 +65,15 @@ class ProductRecommendation(BaseModel):
         "failed, but a requirement could not be verified from catalog data. Decided by the backend.",
     )
     reasons: list[str]
-    satisfied_requirements: list[str] = Field(default=[], description="Requirements verified from catalog data.")
-    unmet_requirements: list[str] = Field(default=[], description="Requirements known not to be met.")
+    satisfied_requirements: list[str] = Field(
+        default=[], description="Requirements verified from catalog data."
+    )
+    unmet_requirements: list[str] = Field(
+        default=[], description="Requirements known not to be met."
+    )
     unverified_requirements: list[str] = Field(
-        default=[], description="Requirements that could not be verified because catalog data is missing."
+        default=[],
+        description="Requirements that could not be verified because catalog data is missing.",
     )
     follow_up_question: str | None = Field(
         default=None, description="A question the salesperson could ask the customer."
@@ -79,7 +91,9 @@ class ProductSuggestionResponse(BaseModel):
         "incomplete or demo-only; `sufficient` otherwise."
     )
     candidates_considered: int
-    exact_match_count: int = Field(default=0, description="Recommendations that fully meet the hard constraints.")
+    exact_match_count: int = Field(
+        default=0, description="Recommendations that fully meet the hard constraints."
+    )
     model: str
     ranking_source: Literal["ai", "catalog_fallback"] = Field(
         default="ai",

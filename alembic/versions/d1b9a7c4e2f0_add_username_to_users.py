@@ -20,11 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column("users", sa.Column("username", sa.String(length=64), nullable=True))
 
-    users = sa.table("users", sa.column("id", sa.Integer), sa.column("username", sa.String))
+    users = sa.table(
+        "users", sa.column("id", sa.Integer), sa.column("username", sa.String)
+    )
     connection = op.get_bind()
     existing_ids = connection.execute(sa.select(users.c.id)).scalars().all()
 
-    # Primary-key-based names are deterministic and unique for existing accounts.
     for user_id in existing_ids:
         connection.execute(
             sa.update(users)

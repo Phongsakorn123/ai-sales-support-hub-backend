@@ -18,14 +18,24 @@ StockQuantity = Annotated[int, Field(ge=0, strict=True)]
 WarrantyMonths = Annotated[int, Field(ge=0, strict=True)]
 
 
-# Collection items are trimmed and bounded to match the child-table columns,
-# because SQLite does not enforce VARCHAR lengths.
-SpecificationKey = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
-SpecificationValue = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
-FeatureItem = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
-TagItem = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
-LabelItem = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
-Sku = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+SpecificationKey = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+]
+SpecificationValue = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+]
+FeatureItem = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+]
+TagItem = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+]
+LabelItem = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+]
+Sku = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
 
 
 class ProductSpecification(BaseModel):

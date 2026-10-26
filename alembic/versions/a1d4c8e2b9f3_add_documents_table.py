@@ -26,14 +26,37 @@ def upgrade() -> None:
         sa.Column("document_type", sa.String(length=50), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("file_path", sa.String(length=255), nullable=False),
-        sa.Column("file_format", sa.String(length=16), server_default=sa.text("'md'"), nullable=False),
-        sa.Column("version", sa.String(length=32), server_default=sa.text("'1.0'"), nullable=False),
         sa.Column(
-            "approval_status", sa.String(length=20), server_default=sa.text("'mock_demo'"), nullable=False
+            "file_format",
+            sa.String(length=16),
+            server_default=sa.text("'md'"),
+            nullable=False,
+        ),
+        sa.Column(
+            "version",
+            sa.String(length=32),
+            server_default=sa.text("'1.0'"),
+            nullable=False,
+        ),
+        sa.Column(
+            "approval_status",
+            sa.String(length=20),
+            server_default=sa.text("'mock_demo'"),
+            nullable=False,
         ),
         sa.Column("is_mock", sa.Boolean(), server_default=sa.text("1"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.current_timestamp(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.current_timestamp(),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.current_timestamp(),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "approval_status IN ('mock_demo', 'draft', 'in_review', 'approved', 'retired')",
             name="ck_documents_approval_status",

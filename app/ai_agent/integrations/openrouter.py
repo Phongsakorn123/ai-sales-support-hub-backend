@@ -19,12 +19,12 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Only HTTP 429 is retried, a bounded number of times. Other errors fail fast.
+
 MAX_RATE_LIMIT_RETRIES = 2
-BACKOFF_BASE_SECONDS = 5.0  # waits ~5 s then ~10 s when the provider sends no Retry-After
+BACKOFF_BASE_SECONDS = 5.0
 MAX_RETRY_DELAY_SECONDS = 20.0
-# Overall budget for one call including retries; keep it below the reverse proxy's read timeout
-# (Nginx default 60 s) so the client gets a clean API error instead of a cut connection.
+
+
 TOTAL_DEADLINE_SECONDS = 55.0
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -108,12 +108,14 @@ class OpenRouterClient:
             api_key=self._api_key,
             base_url=self._base_url,
             timeout=self._timeout,
-            max_retries=0,  # retries are handled explicitly below
+            max_retries=0,
             max_tokens=max_tokens,
             temperature=0,
         )
-        # Tool calling is the structured-output mode most OpenRouter models support.
-        chain = prompt | chat_model.with_structured_output(schema, method="function_calling")
+
+        chain = prompt | chat_model.with_structured_output(
+            schema, method="function_calling"
+        )
         attempt = 0
         deadline = time.monotonic() + TOTAL_DEADLINE_SECONDS
         while True:
@@ -121,34 +123,43 @@ class OpenRouterClient:
             if remaining <= 0:
                 raise LLMTimeoutError("Total time budget exhausted")
             try:
-                result = await asyncio.wait_for(chain.ainvoke(variables), timeout=min(self._timeout + 1, remaining))
+                result = await asyncio.wait_for(
+                    chain.ainvoke(variables), timeout=min(self._timeout + 1, remaining)
+                )
                 break
             except (OutputParserException, ValidationError) as error:
-                logger.warning("OpenRouter returned unparsable output (%s)", type(error).__name__)
+                logger.warning(
+                    "OpenRouter returned unparsable output (%s)", type(error).__name__
+                )
                 raise LLMOutputError from error
             except (openai.RateLimitError, ValueError) as error:
-                # OpenRouter can report provider failures as an HTTP 200 whose body holds an `error`
-                # object; LangChain surfaces that as ValueError(<error dict>). Only code 429 is retried.
+
                 if not isinstance(error, openai.RateLimitError):
                     code = _body_error_code(error)
                     if code != 429:
-                        logger.error("OpenRouter returned an error body (code=%s)", code)
+                        logger.error(
+                            "OpenRouter returned an error body (code=%s)", code
+                        )
                         raise LLMUpstreamError from error
                 if attempt >= MAX_RATE_LIMIT_RETRIES:
-                    logger.warning("OpenRouter rate limit persisted after %d retries", attempt)
+                    logger.warning(
+                        "OpenRouter rate limit persisted after %d retries", attempt
+                    )
                     raise LLMRateLimitedError from error
                 delay = _retry_delay(error, attempt)
                 if delay >= deadline - time.monotonic():
                     logger.warning("OpenRouter rate limit; no time left to retry")
                     raise LLMRateLimitedError from error
                 attempt += 1
-                logger.warning("OpenRouter returned 429; retry %d in %.1fs", attempt, delay)
+                logger.warning(
+                    "OpenRouter returned 429; retry %d in %.1fs", attempt, delay
+                )
                 await asyncio.sleep(delay)
             except (asyncio.TimeoutError, openai.APITimeoutError) as error:
                 logger.warning("OpenRouter request timed out")
                 raise LLMTimeoutError from error
             except Exception as error:
-                # Log only the exception type: provider messages can echo request details.
+
                 logger.error("OpenRouter request failed (%s)", type(error).__name__)
                 raise LLMUpstreamError from error
 
@@ -178,4 +189,7 @@ def _retry_delay(error: openai.RateLimitError, attempt: int) -> float:
             return min(max(float(retry_after), 0.0), MAX_RETRY_DELAY_SECONDS)
     except ValueError:
         pass
-    return min(BACKOFF_BASE_SECONDS * (2**attempt) + random.uniform(0, 0.5), MAX_RETRY_DELAY_SECONDS)
+    return min(
+        BACKOFF_BASE_SECONDS * (2**attempt) + random.uniform(0, 0.5),
+        MAX_RETRY_DELAY_SECONDS,
+    )

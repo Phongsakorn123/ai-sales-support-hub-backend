@@ -24,11 +24,18 @@ def upgrade() -> None:
         sa.Column("model_name", sa.String(length=255), nullable=False),
         sa.Column("content_hash", sa.String(length=64), nullable=False),
         sa.Column("vector", sa.JSON(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.current_timestamp(),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("product_id"),
     )
-    op.create_index("ix_product_embeddings_model_name", "product_embeddings", ["model_name"])
+    op.create_index(
+        "ix_product_embeddings_model_name", "product_embeddings", ["model_name"]
+    )
 
 
 def downgrade() -> None:

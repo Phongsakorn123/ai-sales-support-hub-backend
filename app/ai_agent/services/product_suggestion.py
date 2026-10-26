@@ -5,7 +5,11 @@ import logging
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-from app.ai_agent.integrations.openrouter import LLMError, LLMNotConfiguredError, StructuredLLM
+from app.ai_agent.integrations.openrouter import (
+    LLMError,
+    LLMNotConfiguredError,
+    StructuredLLM,
+)
 from app.ai_agent.schemas.product_suggestion import (
     ProductSuggestionRequest,
     ProductSuggestionResponse,
@@ -40,7 +44,9 @@ NO_AI_SELECTION_NOTE = (
     "The AI model did not select any product, so the closest alternatives were chosen by catalog rules "
     "and are not AI-ranked."
 )
-NO_DOCS_NOTE = "No supporting document evidence was found for some recommended products."
+NO_DOCS_NOTE = (
+    "No supporting document evidence was found for some recommended products."
+)
 
 
 async def suggest_products(
@@ -87,31 +93,38 @@ async def suggest_products(
     except LLMError as error:
         if isinstance(error, LLMNotConfiguredError):
             raise
-        # The backend filters already produced a safe candidate list; show it, clearly labelled.
-        logger.warning("Model unavailable (%s); returning catalog filter matches", type(error).__name__)
+
+        logger.warning(
+            "Model unavailable (%s); returning catalog filter matches",
+            type(error).__name__,
+        )
         ranking_source = "catalog_fallback"
         result = ValidatedRecommendations(
             fallback_recommendations(retrieval.candidates, request.max_products),
             [FALLBACK_NOTE],
             "The AI model was unavailable. These products were selected and ordered by catalog data and rules, not AI ranking.",
         )
-    if ranking_source == "ai" and not result.recommendations and not any(
-        c.match_type == "exact_match" for c in retrieval.candidates
+    if (
+        ranking_source == "ai"
+        and not result.recommendations
+        and not any(c.match_type == "exact_match" for c in retrieval.candidates)
     ):
-        # The model selected nothing, but the backend found labelled alternatives. Keep them visible,
-        # chosen by catalog rules and not presented as AI-ranked.
+
         ranking_source = "catalog_fallback"
         result = ValidatedRecommendations(
             fallback_recommendations(retrieval.candidates, request.max_products),
             [*result.limitations, NO_AI_SELECTION_NOTE],
-            result.summary or "No product fully meets the requirements; closest alternatives chosen by catalog rules.",
+            result.summary
+            or "No product fully meets the requirements; closest alternatives chosen by catalog rules.",
             result.intended_use,
             result.required_features,
             result.missing_information,
             result.clarification_questions,
         )
     parsed.intended_use = result.intended_use
-    parsed.required_features = list(dict.fromkeys([*parsed.required_features, *result.required_features]))
+    parsed.required_features = list(
+        dict.fromkeys([*parsed.required_features, *result.required_features])
+    )
     parsed.missing_information = result.missing_information
     parsed.clarification_questions = result.clarification_questions
     limitations.extend(result.limitations)
@@ -128,7 +141,9 @@ async def suggest_products(
     elif (
         parsed.missing_information
         or any(
-            r.unmet_requirements or r.unverified_requirements or not r.supporting_documents
+            r.unmet_requirements
+            or r.unverified_requirements
+            or not r.supporting_documents
             for r in recommendations
         )
         or any(d.is_mock for d in documents)
@@ -144,7 +159,9 @@ async def suggest_products(
         limitations.append(PARTIAL_EXACT_NOTE)
 
     summary = result.summary or (
-        "The model found no suitable product among the candidates." if not recommendations else ""
+        "The model found no suitable product among the candidates."
+        if not recommendations
+        else ""
     )
     return ProductSuggestionResponse(
         parsed_requirements=parsed,

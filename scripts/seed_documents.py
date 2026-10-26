@@ -51,7 +51,11 @@ class Report:
 
 
 def _bullets(values: list[str]) -> str:
-    return "\n".join(f"- {value}" for value in values) if values else "- Not specified in the catalog."
+    return (
+        "\n".join(f"- {value}" for value in values)
+        if values
+        else "- Not specified in the catalog."
+    )
 
 
 def _specs_table(product: Product) -> str:
@@ -83,7 +87,9 @@ def _identity(product: Product) -> str:
         + (f" / {product.sub_type}" if product.sub_type else ""),
     ]
     if product.warranty_months is not None:
-        lines.append(f"- **Warranty (catalog value):** {product.warranty_months} months")
+        lines.append(
+            f"- **Warranty (catalog value):** {product.warranty_months} months"
+        )
     return "\n".join(lines)
 
 
@@ -102,7 +108,9 @@ def build_datasheet(doc_id: str, product: Product) -> str:
 
 def build_manual(doc_id: str, product: Product) -> str:
     return (
-        _header(doc_id, f"{product.name} — Product Manual (Demo)", "product_manual", product)
+        _header(
+            doc_id, f"{product.name} — Product Manual (Demo)", "product_manual", product
+        )
         + "## About this manual\n\nThis demo manual summarizes how the catalog describes "
         f"the {product.name}. Step-by-step setup instructions are intentionally not included "
         "because they are not part of the catalog data; refer to the manufacturer's official manual.\n\n"
@@ -126,15 +134,28 @@ def build_compatibility(doc_id: str, product: Product) -> str:
     connectivity = [
         f"- **{s['key']}:** {s['value']}"
         for s in product.specifications
-        if re.search(r"connect|port|interface|ethernet|wi-?fi|usb|hdmi|bluetooth|wireless", s["key"] + " " + s["value"], re.I)
+        if re.search(
+            r"connect|port|interface|ethernet|wi-?fi|usb|hdmi|bluetooth|wireless",
+            s["key"] + " " + s["value"],
+            re.I,
+        )
     ]
     return (
-        _header(doc_id, f"{product.name} — Compatibility Guide (Demo)", "compatibility_guide", product)
+        _header(
+            doc_id,
+            f"{product.name} — Compatibility Guide (Demo)",
+            "compatibility_guide",
+            product,
+        )
         + "## Scope\n\nCompatibility with specific operating systems, devices or software has "
         "**not been verified** for this demo. The notes below only restate connectivity-related "
         "specifications recorded in the catalog.\n\n"
         + "## Connectivity-related specifications\n\n"
-        + ("\n".join(connectivity) if connectivity else "- No connectivity specifications are recorded in the catalog.")
+        + (
+            "\n".join(connectivity)
+            if connectivity
+            else "- No connectivity specifications are recorded in the catalog."
+        )
         + f"\n\n## Suitable environments (from catalog use cases)\n\n{_bullets(product.use_cases)}\n\n"
         + f"## Related tags\n\n{', '.join(product.tags) or 'None'}\n\n"
         + "## Verification\n\nBefore deployment, confirm compatibility with the manufacturer or "
@@ -156,13 +177,21 @@ def build_brochure(doc_id: str, product: Product) -> str:
 
 def build_validation(doc_id: str, product: Product) -> str:
     return (
-        _header(doc_id, f"{product.name} — Validation Checklist (Demo Template)", "validation_report", product)
+        _header(
+            doc_id,
+            f"{product.name} — Validation Checklist (Demo Template)",
+            "validation_report",
+            product,
+        )
         + "## Purpose\n\nThis is a blank, illustrative validation checklist. **No tests have been "
         "performed and no results exist.** It only shows how a validation record could be organized.\n\n"
         + "## Items to verify (from recorded specifications)\n\n"
         + "| Specification | Recorded value | Result |\n|---|---|---|\n"
         + (
-            "\n".join(f"| {s['key']} | {s['value']} | Not performed (demo) |" for s in product.specifications)
+            "\n".join(
+                f"| {s['key']} | {s['value']} | Not performed (demo) |"
+                for s in product.specifications
+            )
             or "| — | — | Not performed (demo) |"
         )
         + "\n\n## Sign-off\n\nNo reviewer or approver. Status: mock_demo.\n"
@@ -200,7 +229,9 @@ def _write_new(path: Path, content: str) -> bool:
         return False
 
 
-def seed_documents(session: Session, storage_dir: Path, *, dry_run: bool = False) -> Report:
+def seed_documents(
+    session: Session, storage_dir: Path, *, dry_run: bool = False
+) -> Report:
     report = Report()
     storage_dir = storage_dir.resolve()
     if not dry_run:
@@ -237,7 +268,7 @@ def seed_documents(session: Session, storage_dir: Path, *, dry_run: bool = False
                     if path.exists():
                         report.files_skipped += 1
                     elif not dry_run:
-                        # The record exists but its file is gone: restore it, never overwrite.
+
                         if _write_new(path, BUILDERS[doc_type](record.id, product)):
                             report.files_created += 1
                     else:
@@ -252,9 +283,13 @@ def seed_documents(session: Session, storage_dir: Path, *, dry_run: bool = False
                     report.files_created += 1
                     report.records_created += 1
                     continue
-                if not _write_new(storage_dir / filename, BUILDERS[doc_type](doc_id, product)):
+                if not _write_new(
+                    storage_dir / filename, BUILDERS[doc_type](doc_id, product)
+                ):
                     report.files_skipped += 1
-                    report.failed.append(f"{doc_id}: file already exists, record not created")
+                    report.failed.append(
+                        f"{doc_id}: file already exists, record not created"
+                    )
                     continue
                 try:
                     session.add(
@@ -283,19 +318,27 @@ def seed_documents(session: Session, storage_dir: Path, *, dry_run: bool = False
                 report.records_created += 1
                 report.created_ids.append(doc_id)
             except Exception as error:
-                report.failed.append(f"product {product.id} {doc_type}: {type(error).__name__}")
+                report.failed.append(
+                    f"product {product.id} {doc_type}: {type(error).__name__}"
+                )
     return report
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--dry-run", action="store_true", help="report what would happen")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="report what would happen"
+    )
     args = parser.parse_args()
     print(f"Storage directory: {settings.document_storage_dir}")
     with SessionLocal() as session:
-        report = seed_documents(session, settings.document_storage_dir, dry_run=args.dry_run)
+        report = seed_documents(
+            session, settings.document_storage_dir, dry_run=args.dry_run
+        )
     label = "would create" if args.dry_run else "created"
-    print(f"Records {label}: {report.records_created}, skipped: {report.records_skipped}")
+    print(
+        f"Records {label}: {report.records_created}, skipped: {report.records_skipped}"
+    )
     print(f"Files   {label}: {report.files_created}, skipped: {report.files_skipped}")
     print(f"Failed: {len(report.failed)}")
     for failure in report.failed:

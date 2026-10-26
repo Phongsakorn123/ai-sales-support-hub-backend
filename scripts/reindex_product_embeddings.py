@@ -27,7 +27,11 @@ def reindex_products(db, products, *, dry_run: bool = False) -> tuple[int, int, 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="Report catalog size without generating embeddings.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report catalog size without generating embeddings.",
+    )
     args = parser.parse_args()
     with SessionLocal() as db:
         products = list_products(db, limit=5000, offset=0)

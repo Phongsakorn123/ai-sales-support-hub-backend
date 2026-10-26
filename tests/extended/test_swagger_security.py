@@ -28,11 +28,18 @@ class SwaggerSecurityTests(unittest.TestCase):
             self.assertIsNotNone(nonce_match)
             self.assertTrue(re.findall(r'<script nonce="([^"]+)"', html))
             self.assertTrue(
-                all(value == nonce_match.group(1) for value in re.findall(r'<script nonce="([^"]+)"', html))
+                all(
+                    value == nonce_match.group(1)
+                    for value in re.findall(r'<script nonce="([^"]+)"', html)
+                )
             )
 
-            self.assertEqual(client.get("/static/swagger-ui/swagger-ui.css").status_code, 200)
-            self.assertEqual(client.get("/static/swagger-ui/swagger-ui-bundle.js").status_code, 200)
+            self.assertEqual(
+                client.get("/static/swagger-ui/swagger-ui.css").status_code, 200
+            )
+            self.assertEqual(
+                client.get("/static/swagger-ui/swagger-ui-bundle.js").status_code, 200
+            )
 
     def test_vendored_assets_match_the_integrity_hashes(self):
         import base64
@@ -42,7 +49,9 @@ class SwaggerSecurityTests(unittest.TestCase):
             ("swagger-ui.css", SWAGGER_CSS_SRI),
             ("swagger-ui-bundle.js", SWAGGER_JS_SRI),
         ):
-            digest = base64.b64encode(hashlib.sha384((STATIC_DIR / filename).read_bytes()).digest()).decode()
+            digest = base64.b64encode(
+                hashlib.sha384((STATIC_DIR / filename).read_bytes()).digest()
+            ).decode()
             self.assertEqual(expected, f"sha384-{digest}")
 
 

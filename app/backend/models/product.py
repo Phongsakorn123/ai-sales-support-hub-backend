@@ -82,7 +82,6 @@ class Product(Base):
         passive_deletes=True,
     )
 
-    # Plain-list views of the child rows, used for API serialization.
     @property
     def specifications(self) -> list[dict[str, str]]:
         return [{"key": row.key, "value": row.value} for row in self.specification_rows]
@@ -119,7 +118,9 @@ class ProductSpecification(Base):
     product_id: Mapped[int] = _product_fk()
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     value: Mapped[str] = mapped_column(Text, nullable=False)
-    position: Mapped[int] = mapped_column(default=0, server_default=text("0"), nullable=False)
+    position: Mapped[int] = mapped_column(
+        default=0, server_default=text("0"), nullable=False
+    )
 
 
 class ProductFeature(Base):
@@ -129,7 +130,9 @@ class ProductFeature(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = _product_fk()
     value: Mapped[str] = mapped_column(Text, nullable=False)
-    position: Mapped[int] = mapped_column(default=0, server_default=text("0"), nullable=False)
+    position: Mapped[int] = mapped_column(
+        default=0, server_default=text("0"), nullable=False
+    )
 
 
 class ProductTag(Base):
@@ -142,7 +145,9 @@ class ProductTag(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = _product_fk()
     value: Mapped[str] = mapped_column(String(100), nullable=False)
-    position: Mapped[int] = mapped_column(default=0, server_default=text("0"), nullable=False)
+    position: Mapped[int] = mapped_column(
+        default=0, server_default=text("0"), nullable=False
+    )
 
 
 class ProductTargetCustomer(Base):
@@ -152,7 +157,9 @@ class ProductTargetCustomer(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = _product_fk()
     value: Mapped[str] = mapped_column(String(255), nullable=False)
-    position: Mapped[int] = mapped_column(default=0, server_default=text("0"), nullable=False)
+    position: Mapped[int] = mapped_column(
+        default=0, server_default=text("0"), nullable=False
+    )
 
 
 class ProductUseCase(Base):
@@ -162,4 +169,6 @@ class ProductUseCase(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = _product_fk()
     value: Mapped[str] = mapped_column(String(255), nullable=False)
-    position: Mapped[int] = mapped_column(default=0, server_default=text("0"), nullable=False)
+    position: Mapped[int] = mapped_column(
+        default=0, server_default=text("0"), nullable=False
+    )

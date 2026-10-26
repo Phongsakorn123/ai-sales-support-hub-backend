@@ -15,7 +15,7 @@ from app.ai_agent.services.retrieval import Candidate
 from app.ai_agent.services.text_safety import neutralize
 from app.core.config import settings
 
-# Reasoning-capable free models spend output tokens on hidden reasoning before the answer.
+
 RECOMMENDATION_MAX_TOKENS = 4000
 
 
@@ -52,7 +52,6 @@ def candidate_payload(candidate: Candidate) -> dict:
         "specifications": p.specifications,
         "features": p.features[:8],
         "use_cases": p.use_cases[:6],
-        # Verdicts computed by the backend from catalog data; the model must not change them.
         "backend_check": {
             "match_type": candidate.match_type,
             "satisfied": candidate.satisfied,
@@ -79,7 +78,7 @@ def candidate_payload(candidate: Candidate) -> dict:
 
 
 def _match_type(candidate: Candidate, extra_unmet: list[str]) -> str:
-    # A model-reported gap cannot be verified by the backend, so it only ever lowers an exact match.
+
     if candidate.match_type == "exact_match" and extra_unmet:
         return "insufficient_data"
     return candidate.match_type
@@ -125,7 +124,9 @@ def build_recommendation(
     )
 
 
-def fallback_recommendations(candidates: list[Candidate], max_products: int) -> list[ProductRecommendation]:
+def fallback_recommendations(
+    candidates: list[Candidate], max_products: int
+) -> list[ProductRecommendation]:
     """Used when the model is unavailable: deterministic, using the same classification as the AI path."""
     return [
         build_recommendation(candidate, [_fallback_reason(candidate)], [], [])
@@ -159,19 +160,24 @@ def validate_output(
             break
         seen.add(item.product_id)
         provided = {e.document.id: e.document for e in candidate.documents}
-        cited = list(dict.fromkeys(i for i in item.supporting_document_ids if i in provided))
+        cited = list(
+            dict.fromkeys(i for i in item.supporting_document_ids if i in provided)
+        )
         if len(cited) != len(set(item.supporting_document_ids)):
             discarded = True
         recommendations.append(
             build_recommendation(
-                candidate, item.reasons, item.unmet_requirements, cited, item.follow_up_question
+                candidate,
+                item.reasons,
+                item.unmet_requirements,
+                cited,
+                item.follow_up_question,
             )
         )
 
     if output.recommendations and not recommendations:
         raise LLMOutputError("Model referenced no valid candidate products")
 
-    # The model orders within a match type; the backend decides which type outranks which.
     tier = {"exact_match": 0, "insufficient_data": 1, "alternative": 2}
     recommendations.sort(key=lambda r: tier[r.match_type])
     recommendations.sort(key=lambda r: tier[r.match_type])
@@ -179,7 +185,9 @@ def validate_output(
 
     limitations = list(output.limitations)
     if discarded:
-        limitations.append("Some model-suggested items referenced unknown products or documents and were discarded.")
+        limitations.append(
+            "Some model-suggested items referenced unknown products or documents and were discarded."
+        )
     return ValidatedRecommendations(
         recommendations,
         limitations,
@@ -205,7 +213,9 @@ async def generate_recommendations(
         {
             "requirements": neutralize(requirements),
             "parsed": json.dumps(parsed.model_dump(mode="json"), ensure_ascii=False),
-            "candidates": json.dumps([candidate_payload(c) for c in candidates], ensure_ascii=False),
+            "candidates": json.dumps(
+                [candidate_payload(c) for c in candidates], ensure_ascii=False
+            ),
             "max_products": max_products,
         },
         max_tokens=RECOMMENDATION_MAX_TOKENS,

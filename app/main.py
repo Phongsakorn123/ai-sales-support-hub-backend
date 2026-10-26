@@ -10,7 +10,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.ai_agent.api.product_suggestions import router as ai_router
 from app.backend.api.auth import router as auth_router
-from app.backend.api.documents import product_documents_router, router as documents_router
+from app.backend.api.documents import (
+    product_documents_router,
+    router as documents_router,
+)
 from app.backend.api.products import router as products_router
 from app.core.config import PROJECT_ROOT, settings
 
@@ -29,8 +32,12 @@ app = FastAPI(
 
 SWAGGER_CSS_URL = "/static/swagger-ui/swagger-ui.css"
 SWAGGER_JS_URL = "/static/swagger-ui/swagger-ui-bundle.js"
-SWAGGER_CSS_SRI = "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW"
-SWAGGER_JS_SRI = "sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23eHFbvNkXkw"
+SWAGGER_CSS_SRI = (
+    "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW"
+)
+SWAGGER_JS_SRI = (
+    "sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23eHFbvNkXkw"
+)
 CSP_NONCE: ContextVar[str] = ContextVar("csp_nonce")
 
 
@@ -82,6 +89,7 @@ async def swagger_ui(request: Request) -> HTMLResponse:
     )
     html = re.sub(r"<script(?=[\s>])", lambda _: f'<script nonce="{nonce}"', html)
     return HTMLResponse(content=html, status_code=response.status_code)
+
 
 STATIC_DIR = PROJECT_ROOT / "static"
 STATIC_DIR.mkdir(exist_ok=True)

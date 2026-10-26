@@ -24,7 +24,12 @@ LAB = {
     "selling_price": 10,
     "description": "Zorblax calibrated pipette.",
 }
-KEYBOARD = {"name": "Typist Keyboard", "category": "Peripherals", "sku": "T-KBD", "selling_price": 10}
+KEYBOARD = {
+    "name": "Typist Keyboard",
+    "category": "Peripherals",
+    "sku": "T-KBD",
+    "selling_price": 10,
+}
 
 
 class DocumentTestCase(unittest.TestCase):
@@ -78,7 +83,7 @@ class DocumentTestCase(unittest.TestCase):
 class SeedTests(DocumentTestCase):
     def test_creates_files_and_records_for_existing_products(self) -> None:
         report = self.seed()
-        # 4 types for the keyboard, 5 (incl. validation) for the laboratory product.
+
         self.assertEqual(report.records_created, 9)
         self.assertEqual(report.files_created, 9)
         self.assertEqual(report.failed, [])
@@ -122,7 +127,14 @@ class SeedTests(DocumentTestCase):
         victim = self.docs()[0]
         (self.storage / victim.file_path).unlink()
         with self.Session() as session:
-            session.add(Product(name="Late Mouse", category="Peripherals", sku="T-MSE", selling_price=5))
+            session.add(
+                Product(
+                    name="Late Mouse",
+                    category="Peripherals",
+                    sku="T-MSE",
+                    selling_price=5,
+                )
+            )
             session.commit()
         report = self.seed()
         self.assertEqual(report.records_created, 4)
@@ -141,13 +153,17 @@ class SeedTests(DocumentTestCase):
         self.storage.mkdir(parents=True)
         (self.storage / "DOC-0001.md").write_text("unrelated", encoding="utf-8")
         self.seed()
-        self.assertEqual((self.storage / "DOC-0001.md").read_text(encoding="utf-8"), "unrelated")
+        self.assertEqual(
+            (self.storage / "DOC-0001.md").read_text(encoding="utf-8"), "unrelated"
+        )
         self.assertNotIn("DOC-0001", [d.id for d in self.docs()])
 
     def test_deleting_product_removes_records(self) -> None:
         self.seed()
         with self.Session() as session:
-            session.delete(session.scalars(select(Product).where(Product.sku == "T-KBD")).one())
+            session.delete(
+                session.scalars(select(Product).where(Product.sku == "T-KBD")).one()
+            )
             session.commit()
             remaining = session.scalar(select(func.count()).select_from(Document))
         self.assertEqual(remaining, 5)
@@ -158,7 +174,9 @@ class ApiTests(DocumentTestCase):
         super().setUp()
         self.seed()
         docs = self.docs()
-        self.lab_id = next(d.product_id for d in docs if d.document_type == "validation_report")
+        self.lab_id = next(
+            d.product_id for d in docs if d.document_type == "validation_report"
+        )
         self.first = docs[0]
 
     def test_search_finds_text_from_markdown_file(self) -> None:
@@ -174,8 +192,12 @@ class ApiTests(DocumentTestCase):
 
     def test_search_matches_new_text_added_to_file(self) -> None:
         path = self.storage / self.first.file_path
-        path.write_text(path.read_text(encoding="utf-8") + "\nuniquephrasexyz\n", encoding="utf-8")
-        body = self.client.get("/api/v1/documents/search", params={"q": "uniquephrasexyz"}).json()
+        path.write_text(
+            path.read_text(encoding="utf-8") + "\nuniquephrasexyz\n", encoding="utf-8"
+        )
+        body = self.client.get(
+            "/api/v1/documents/search", params={"q": "uniquephrasexyz"}
+        ).json()
         self.assertEqual([i["id"] for i in body["items"]], [self.first.id])
 
     def test_filters_and_pagination(self) -> None:
@@ -189,25 +211,36 @@ class ApiTests(DocumentTestCase):
         self.assertEqual(page1["total"], 9)
         self.assertEqual(len(page1["items"]), 4)
         self.assertEqual(len(page2["items"]), 4)
-        self.assertFalse({i["id"] for i in page1["items"]} & {i["id"] for i in page2["items"]})
+        self.assertFalse(
+            {i["id"] for i in page1["items"]} & {i["id"] for i in page2["items"]}
+        )
         self.assertEqual(self.client.get(url, params={"limit": 0}).status_code, 422)
 
     def test_detail_and_file(self) -> None:
         detail = self.client.get(f"/api/v1/documents/{self.first.id}")
         self.assertEqual(detail.status_code, 200)
-        self.assertEqual(detail.json()["file_url"], f"/api/v1/documents/{self.first.id}/file")
+        self.assertEqual(
+            detail.json()["file_url"], f"/api/v1/documents/{self.first.id}/file"
+        )
         file_response = self.client.get(detail.json()["file_url"])
         self.assertEqual(file_response.status_code, 200)
-        self.assertTrue(file_response.headers["content-type"].startswith("text/markdown"))
+        self.assertTrue(
+            file_response.headers["content-type"].startswith("text/markdown")
+        )
         self.assertIn("inline", file_response.headers["content-disposition"])
         expected = (self.storage / self.first.file_path).read_text(encoding="utf-8")
         self.assertEqual(file_response.text, expected)
         download = self.client.get(detail.json()["download_url"])
-        self.assertIn(f'attachment; filename="{self.first.id}.md"', download.headers["content-disposition"])
+        self.assertIn(
+            f'attachment; filename="{self.first.id}.md"',
+            download.headers["content-disposition"],
+        )
 
     def test_unknown_document_is_404(self) -> None:
         self.assertEqual(self.client.get("/api/v1/documents/DOC-9999").status_code, 404)
-        self.assertEqual(self.client.get("/api/v1/documents/DOC-9999/file").status_code, 404)
+        self.assertEqual(
+            self.client.get("/api/v1/documents/DOC-9999/file").status_code, 404
+        )
 
     def test_missing_file_returns_safe_404(self) -> None:
         (self.storage / self.first.file_path).unlink()
@@ -220,7 +253,8 @@ class ApiTests(DocumentTestCase):
         for bad in ("..%2Fsecret", "DOC-0001%2F..%2F..", "../etc/passwd", "DOC-1"):
             with self.subTest(bad=bad):
                 self.assertIn(
-                    self.client.get(f"/api/v1/documents/{bad}/file").status_code, (404, 422)
+                    self.client.get(f"/api/v1/documents/{bad}/file").status_code,
+                    (404, 422),
                 )
         secret = Path(self.tmp.name) / "secret.md"
         secret.write_text("TOP SECRET", encoding="utf-8")
@@ -248,7 +282,9 @@ class ApiTests(DocumentTestCase):
         response = self.client.get(f"/api/v1/products/{self.lab_id}/documents")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()), 5)
-        self.assertEqual(self.client.get("/api/v1/products/9999/documents").status_code, 404)
+        self.assertEqual(
+            self.client.get("/api/v1/products/9999/documents").status_code, 404
+        )
 
     def test_authentication_enforced(self) -> None:
         app.dependency_overrides.pop(get_current_user, None)

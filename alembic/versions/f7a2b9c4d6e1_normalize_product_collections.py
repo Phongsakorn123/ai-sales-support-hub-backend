@@ -17,7 +17,7 @@ down_revision: Union[str, Sequence[str], None] = "e3c5a1b8f7d2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-# table name -> (source JSON column on products, value column type)
+
 SIMPLE_TABLES = {
     "product_features": ("features", sa.Text()),
     "product_tags": ("tags", sa.String(length=100)),
@@ -38,7 +38,9 @@ def _child_table(name: str, *columns: sa.Column) -> None:
             nullable=False,
         ),
         *columns,
-        sa.Column("position", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column(
+            "position", sa.Integer(), server_default=sa.text("0"), nullable=False
+        ),
     )
     op.create_index(f"ix_{name}_product_id", name, ["product_id"])
 
@@ -90,11 +92,16 @@ def upgrade() -> None:
             for position, value in enumerate(_load(row[column])):
                 connection.execute(
                     child_table.insert(),
-                    {"product_id": row["id"], "value": str(value), "position": position},
+                    {
+                        "product_id": row["id"],
+                        "value": str(value),
+                        "position": position,
+                    },
                 )
 
-    # Inactive legacy products become discontinued so their unavailability is preserved.
-    connection.execute(sa.text("UPDATE products SET discontinued = 1 WHERE is_active = 0"))
+    connection.execute(
+        sa.text("UPDATE products SET discontinued = 1 WHERE is_active = 0")
+    )
 
     with op.batch_alter_table("products") as batch_op:
         for column in JSON_COLUMNS:

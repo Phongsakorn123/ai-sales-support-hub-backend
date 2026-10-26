@@ -116,7 +116,9 @@ def _get_or_404(db: Session, document_id: str) -> Document:
     except DocumentPersistenceError as error:
         raise _database_error("lookup", error) from error
     if document is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found."
+        )
     return document
 
 
@@ -161,7 +163,6 @@ def get_document_file(
         content=content,
         media_type="text/markdown; charset=utf-8",
         headers={
-            # The filename comes from the validated document ID, never from the stored path.
             "Content-Disposition": f'{disposition}; filename="{document.id}.md"',
             "X-Content-Type-Options": "nosniff",
         },
@@ -182,7 +183,9 @@ def list_product_documents(
 ) -> list[DocumentRead]:
     try:
         if db.get(Product, product_id) is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found."
+            )
         documents = document_service.list_product_documents(
             db, product_id, limit=limit, offset=offset
         )

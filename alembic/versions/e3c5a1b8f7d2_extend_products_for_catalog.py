@@ -16,7 +16,13 @@ down_revision: Union[str, Sequence[str], None] = "d1b9a7c4e2f0"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-JSON_LIST_COLUMNS = ("specifications", "features", "tags", "target_customers", "use_cases")
+JSON_LIST_COLUMNS = (
+    "specifications",
+    "features",
+    "tags",
+    "target_customers",
+    "use_cases",
+)
 
 
 def upgrade() -> None:
@@ -35,12 +41,19 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("sub_type", sa.String(length=100), nullable=True))
         batch_op.add_column(sa.Column("cost_price", sa.Numeric(12, 2), nullable=True))
         batch_op.add_column(
-            sa.Column("discontinued", sa.Boolean(), server_default=sa.text("0"), nullable=False)
+            sa.Column(
+                "discontinued",
+                sa.Boolean(),
+                server_default=sa.text("0"),
+                nullable=False,
+            )
         )
         batch_op.add_column(sa.Column("warranty_months", sa.Integer(), nullable=True))
         for column in JSON_LIST_COLUMNS:
             batch_op.add_column(
-                sa.Column(column, sa.JSON(), server_default=sa.text("'[]'"), nullable=False)
+                sa.Column(
+                    column, sa.JSON(), server_default=sa.text("'[]'"), nullable=False
+                )
             )
         batch_op.add_column(sa.Column("key_benefits", sa.Text(), nullable=True))
         batch_op.add_column(sa.Column("limitations", sa.Text(), nullable=True))
@@ -51,9 +64,18 @@ def downgrade() -> None:
     with op.batch_alter_table("products") as batch_op:
         batch_op.drop_constraint("uq_products_sku", type_="unique")
         for column in (
-            "limitations", "key_benefits", *JSON_LIST_COLUMNS, "warranty_months",
-            "discontinued", "cost_price", "sub_type", "type", "image_url", "sku",
-            "model", "brand",
+            "limitations",
+            "key_benefits",
+            *JSON_LIST_COLUMNS,
+            "warranty_months",
+            "discontinued",
+            "cost_price",
+            "sub_type",
+            "type",
+            "image_url",
+            "sku",
+            "model",
+            "brand",
         ):
             batch_op.drop_column(column)
         batch_op.alter_column(

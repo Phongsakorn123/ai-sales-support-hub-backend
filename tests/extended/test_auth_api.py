@@ -30,7 +30,9 @@ class AuthAPITests(unittest.TestCase):
         database_path = Path(self.temp_directory.name) / "auth-test.db"
         self.engine = create_engine(URL.create("sqlite", database=str(database_path)))
         Base.metadata.create_all(self.engine)
-        self.session_factory = sessionmaker(bind=self.engine, autoflush=False, autocommit=False)
+        self.session_factory = sessionmaker(
+            bind=self.engine, autoflush=False, autocommit=False
+        )
         self.previous_secret = settings.jwt_secret_key
         settings.jwt_secret_key = TEST_SECRET
 
@@ -76,7 +78,9 @@ class AuthAPITests(unittest.TestCase):
             data={"username": identifier, "password": password},
         )
 
-    def test_register_normalizes_username_and_email_hashes_password_and_returns_safe_profile(self) -> None:
+    def test_register_normalizes_username_and_email_hashes_password_and_returns_safe_profile(
+        self,
+    ) -> None:
         response = self.register()
 
         self.assertEqual(response.status_code, 201, response.text)
@@ -118,11 +122,15 @@ class AuthAPITests(unittest.TestCase):
             {"username": "valid-user", "password": PASSWORD},
             {"username": "valid-user", "email": "valid@example.com"},
         ):
-            with self.subTest(missing_field=set({"username", "email", "password"}) - payload.keys()):
+            with self.subTest(
+                missing_field=set({"username", "email", "password"}) - payload.keys()
+            ):
                 response = self.client.post("/api/v1/auth/register", json=payload)
                 self.assertEqual(response.status_code, 422, response.text)
 
-    def test_concurrent_duplicate_registrations_create_at_most_one_account(self) -> None:
+    def test_concurrent_duplicate_registrations_create_at_most_one_account(
+        self,
+    ) -> None:
         def register_once():
             with TestClient(app) as client:
                 return client.post(
@@ -274,7 +282,10 @@ class AuthAPITests(unittest.TestCase):
 
     def test_missing_or_placeholder_jwt_secret_fails_closed(self) -> None:
         self.assertEqual(self.register().status_code, 201)
-        for secret in (None, SecretStr("replace-with-a-placeholder-secret-long-enough")):
+        for secret in (
+            None,
+            SecretStr("replace-with-a-placeholder-secret-long-enough"),
+        ):
             with self.subTest(secret_is_missing=secret is None):
                 settings.jwt_secret_key = secret
                 response = self.login()
@@ -337,12 +348,16 @@ class AuthAPITests(unittest.TestCase):
             )
             for method, path, payload in requests:
                 with self.subTest(method=method, path=path):
-                    response = unauthenticated_client.request(method, path, json=payload)
+                    response = unauthenticated_client.request(
+                        method, path, json=payload
+                    )
                     self.assertEqual(response.status_code, 401, response.text)
         finally:
             unauthenticated_client.close()
 
-    def test_product_routes_reject_invalid_and_expired_tokens_and_accept_valid_token(self) -> None:
+    def test_product_routes_reject_invalid_and_expired_tokens_and_accept_valid_token(
+        self,
+    ) -> None:
         self.assertEqual(self.register().status_code, 201)
         valid_token = self.login(identifier="sales.user").json()["access_token"]
         expired_token = create_access_token(1, expires_delta=timedelta(minutes=-1))

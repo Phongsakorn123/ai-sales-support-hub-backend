@@ -18,14 +18,12 @@ class Document(Base):
             "approval_status IN ('mock_demo', 'draft', 'in_review', 'approved', 'retired')",
             name="ck_documents_approval_status",
         ),
-        # A mock document can never be marked as approved.
         CheckConstraint(
             "NOT (is_mock = 1 AND approval_status = 'approved')",
             name="ck_documents_mock_not_approved",
         ),
         Index("ix_documents_product_id", "product_id"),
         Index("ix_documents_document_type", "document_type"),
-        # Keeps the seed idempotent: one seeded document per product and type.
         Index(
             "uq_documents_mock_product_type",
             "product_id",
@@ -43,7 +41,7 @@ class Document(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     document_type: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Path relative to settings.document_storage_dir, never absolute.
+
     file_path: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     file_format: Mapped[str] = mapped_column(
         String(16), default="md", server_default=text("'md'"), nullable=False
@@ -52,7 +50,10 @@ class Document(Base):
         String(32), default="1.0", server_default=text("'1.0'"), nullable=False
     )
     approval_status: Mapped[str] = mapped_column(
-        String(20), default="mock_demo", server_default=text("'mock_demo'"), nullable=False
+        String(20),
+        default="mock_demo",
+        server_default=text("'mock_demo'"),
+        nullable=False,
     )
     is_mock: Mapped[bool] = mapped_column(
         default=True, server_default=text("1"), nullable=False
