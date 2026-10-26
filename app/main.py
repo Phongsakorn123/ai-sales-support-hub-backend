@@ -1,3 +1,6 @@
+import re
+import secrets
+
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
@@ -30,13 +33,15 @@ SWAGGER_JS_SRI = "sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23e
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    nonce = secrets.token_urlsafe(18)
+    request.state.csp_nonce = nonce
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "img-src 'self' data:; font-src 'self' data: https://cdn.jsdelivr.net; "
-        "connect-src 'self'; object-src 'none'; base-uri 'self'; "
-        "form-action 'self'; frame-ancestors 'none'"
+        f"default-src 'self'; script-src 'self' 'nonce-{nonce}' 'strict-dynamic' "
+        "https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; "
+        "style-src-attr 'unsafe-inline'; img-src 'self' data:; "
+        "font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self'; "
+        "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     )
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -44,12 +49,12 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
-    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     return response
 
 
 @app.get("/docs", include_in_schema=False)
-async def swagger_ui() -> HTMLResponse:
+async def swagger_ui(request: Request) -> HTMLResponse:
     response = get_swagger_ui_html(
         openapi_url=app.openapi_url or "/openapi.json",
         title=f"{app.title} - Swagger UI",
@@ -58,6 +63,8 @@ async def swagger_ui() -> HTMLResponse:
         swagger_favicon_url="",
     )
     html = response.body.decode("utf-8")
+    nonce = request.state.csp_nonce
+    html = re.sub(r"<script(?=[\s>])", f'<script nonce="{nonce}"', html)
     html = html.replace(
         f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}">',
         f'<link type="text/css" rel="stylesheet" href="{SWAGGER_CSS_URL}" '
