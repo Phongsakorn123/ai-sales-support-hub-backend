@@ -21,8 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 MAX_RATE_LIMIT_RETRIES = 2
+MAX_TIMEOUT_RETRIES = 2
 BACKOFF_BASE_SECONDS = 5.0
 MAX_RETRY_DELAY_SECONDS = 20.0
+MAX_ATTEMPT_SECONDS = 18.0
 
 
 TOTAL_DEADLINE_SECONDS = 55.0
@@ -116,7 +118,8 @@ class OpenRouterClient:
         chain = prompt | chat_model.with_structured_output(
             schema, method="function_calling"
         )
-        attempt = 0
+        rate_limit_retries = 0
+        timeout_retries = 0
         deadline = time.monotonic() + TOTAL_DEADLINE_SECONDS
         while True:
             remaining = deadline - time.monotonic()
@@ -124,7 +127,8 @@ class OpenRouterClient:
                 raise LLMTimeoutError("Total time budget exhausted")
             try:
                 result = await asyncio.wait_for(
-                    chain.ainvoke(variables), timeout=min(self._timeout + 1, remaining)
+                    chain.ainvoke(variables),
+                    timeout=min(self._timeout + 1, MAX_ATTEMPT_SECONDS, remaining),
                 )
                 break
             except (OutputParserException, ValidationError) as error:
@@ -141,23 +145,41 @@ class OpenRouterClient:
                             "OpenRouter returned an error body (code=%s)", code
                         )
                         raise LLMUpstreamError from error
-                if attempt >= MAX_RATE_LIMIT_RETRIES:
+                if rate_limit_retries >= MAX_RATE_LIMIT_RETRIES:
                     logger.warning(
-                        "OpenRouter rate limit persisted after %d retries", attempt
+                        "OpenRouter rate limit persisted after %d retries",
+                        rate_limit_retries,
                     )
                     raise LLMRateLimitedError from error
-                delay = _retry_delay(error, attempt)
+                delay = _retry_delay(error, rate_limit_retries)
                 if delay >= deadline - time.monotonic():
                     logger.warning("OpenRouter rate limit; no time left to retry")
                     raise LLMRateLimitedError from error
-                attempt += 1
+                rate_limit_retries += 1
                 logger.warning(
-                    "OpenRouter returned 429; retry %d in %.1fs", attempt, delay
+                    "OpenRouter returned 429; retry %d in %.1fs",
+                    rate_limit_retries,
+                    delay,
                 )
                 await asyncio.sleep(delay)
             except (asyncio.TimeoutError, openai.APITimeoutError) as error:
-                logger.warning("OpenRouter request timed out")
-                raise LLMTimeoutError from error
+                if timeout_retries >= MAX_TIMEOUT_RETRIES:
+                    logger.warning(
+                        "OpenRouter request timed out after %d retries",
+                        timeout_retries,
+                    )
+                    raise LLMTimeoutError from error
+                delay = min(1.0 + random.uniform(0, 0.5), MAX_RETRY_DELAY_SECONDS)
+                if delay >= deadline - time.monotonic():
+                    logger.warning("OpenRouter request timed out; no time left to retry")
+                    raise LLMTimeoutError from error
+                timeout_retries += 1
+                logger.warning(
+                    "OpenRouter request timed out; retry %d in %.1fs",
+                    timeout_retries,
+                    delay,
+                )
+                await asyncio.sleep(delay)
             except Exception as error:
 
                 logger.error("OpenRouter request failed (%s)", type(error).__name__)
