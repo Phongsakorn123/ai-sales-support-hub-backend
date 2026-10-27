@@ -22,15 +22,15 @@ idempotent. Stop the services with `docker compose down`; this keeps the named v
 
 OpenRouter is optional for starting the app. Without an API key, product suggestions still return
 catalog-filtered fallback results and are labelled as not AI-ranked. To enable OpenRouter ranking,
-create a local `.env` file (Compose reads it automatically) and set only `OPENROUTER_API_KEY`.
-Compose defaults to the free `xingchen-agi/xing4.0-29b-a4b:free` model; override
-`OPENROUTER_MODEL` only if you want another model. After setting the key, run
-`docker compose up -d backend` to apply it. Never commit `.env` or a real API key. The JWT secret
-is generated randomly on first startup and stored in the backend data volume. The default setup is
-for local demonstration; configure deployment-specific secrets before production.
+open `.env` and enter a value for `OPENROUTER_API_KEY`. The
+committed model default is `xingchen-agi/xing4.0-29b-a4b:free`; override `OPENROUTER_MODEL`
+only if you want another model. After setting the key, run `docker compose up -d backend` to apply it.
+Keep `OPENROUTER_API_KEY` blank in commits. The JWT secret is generated randomly on first startup
+and stored in the backend data volume while `JWT_SECRET_KEY` is blank. The default setup is for local
+demonstration; configure deployment-specific secrets before production.
 
-For API-only local development, create a virtual environment, install `requirements.txt`, copy
-`.env.example` to `.env`, set `DATABASE_PATH` and `DOCUMENT_STORAGE_DIR` as needed, then run
+For API-only local development, create a virtual environment, install `requirements.txt`, open
+`.env`, set `DATABASE_PATH` and `DOCUMENT_STORAGE_DIR` as needed, then run
 `alembic upgrade head`, the seed commands above, and `uvicorn app.main:app --reload --port 8000`.
 When running the frontend outside Compose against that local server, point both frontend API
 base URLs at `http://localhost:8000/api/v1`.
@@ -224,4 +224,5 @@ regression coverage.
 The frontend repository has a GitHub Actions workflow for Semgrep, Trivy dependency scanning,
 and IaC scanning. This repository includes backend test CI and a DAST workflow using OWASP ZAP.
 These workflows scan configured targets and dependencies; they do not replace deployment-specific
-security review. Keep `.env`, database files, product uploads, and model caches out of commits.
+security review. Never commit a real API key or other secret in `.env`. Keep database files, product
+uploads, and model caches out of commits.
