@@ -1,11 +1,9 @@
-import logging
 from datetime import datetime, timezone
 
 from decimal import Decimal
 
-from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.backend.models.product import (
     Product,
@@ -15,6 +13,7 @@ from app.backend.models.product import (
     ProductTargetCustomer,
     ProductUseCase,
 )
+from app.backend.repositories import products as product_repository
 from app.backend.schemas.product import ProductCreate, ProductUpdate
 
 
@@ -26,36 +25,11 @@ class DuplicateSkuError(ProductPersistenceError):
     pass
 
 
-logger = logging.getLogger(__name__)
-
-
 def _raise_persistence_error(error: SQLAlchemyError, message: str) -> None:
     if isinstance(error, IntegrityError) and "products.sku" in str(error.orig):
         raise DuplicateSkuError("SKU already exists") from error
     raise ProductPersistenceError(message) from error
 
-
-def _sync_product_embedding(db: Session, product: Product) -> None:
-
-    try:
-        from app.ai_agent.services.embeddings import try_sync_product_embedding
-
-        try_sync_product_embedding(db, product)
-    except Exception as error:
-        logger.warning(
-            "Product embedding sync unavailable (product_id=%s, error=%s)",
-            product.id,
-            type(error).__name__,
-        )
-
-
-EAGER_COLLECTIONS = (
-    selectinload(Product.specification_rows),
-    selectinload(Product.feature_rows),
-    selectinload(Product.tag_rows),
-    selectinload(Product.target_customer_rows),
-    selectinload(Product.use_case_rows),
-)
 
 COLLECTION_FIELDS = (
     "specifications",
@@ -97,26 +71,16 @@ def create_product(db: Session, product_data: ProductCreate) -> Product:
     product = Product(**values)
     _set_collections(product, collections)
     try:
-        db.add(product)
-        db.commit()
-        db.refresh(product)
+        product_repository.add_product(db, product)
     except SQLAlchemyError as error:
         db.rollback()
         _raise_persistence_error(error, "Could not create product")
-    _sync_product_embedding(db, product)
     return product
 
 
 def list_products(db: Session, *, limit: int, offset: int) -> list[Product]:
-    statement = (
-        select(Product)
-        .options(*EAGER_COLLECTIONS)
-        .order_by(Product.id)
-        .limit(limit)
-        .offset(offset)
-    )
     try:
-        return list(db.scalars(statement).all())
+        return product_repository.list_products(db, limit=limit, offset=offset)
     except SQLAlchemyError as error:
         db.rollback()
         raise ProductPersistenceError("Could not list products") from error
@@ -124,7 +88,7 @@ def list_products(db: Session, *, limit: int, offset: int) -> list[Product]:
 
 def get_product(db: Session, product_id: int) -> Product | None:
     try:
-        return db.get(Product, product_id, options=EAGER_COLLECTIONS)
+        return product_repository.get_product(db, product_id)
     except SQLAlchemyError as error:
         db.rollback()
         raise ProductPersistenceError("Could not retrieve product") from error
@@ -144,19 +108,16 @@ def update_product(
     _set_collections(product, collections)
     product.updated_at = datetime.now(timezone.utc)
     try:
-        db.commit()
-        db.refresh(product)
+        product_repository.save_product(db, product)
     except SQLAlchemyError as error:
         db.rollback()
         _raise_persistence_error(error, "Could not update product")
-    _sync_product_embedding(db, product)
     return product
 
 
 def delete_product(db: Session, product: Product) -> None:
     try:
-        db.delete(product)
-        db.commit()
+        product_repository.delete_product(db, product)
     except SQLAlchemyError as error:
         db.rollback()
         raise ProductPersistenceError("Could not delete product") from error
@@ -173,26 +134,16 @@ def search_products(
     limit: int = 50,
 ) -> list[Product]:
     """Filter products with parameterized ORM clauses; every filter is optional and combined with AND."""
-    statement = select(Product).options(*EAGER_COLLECTIONS)
-    if category_terms:
-        terms = [term.lower() for term in category_terms]
-        statement = statement.where(
-            Product.category.is_not(None) & func.lower(Product.category).in_(terms)
-            | Product.type.is_not(None) & func.lower(Product.type).in_(terms)
-            | Product.sub_type.is_not(None) & func.lower(Product.sub_type).in_(terms)
-        )
-    if brand:
-        statement = statement.where(func.lower(Product.brand) == brand.lower())
-    if max_price is not None:
-        statement = statement.where(Product.selling_price <= max_price)
-    if currency:
-        statement = statement.where(func.upper(Product.currency) == currency.upper())
-    if in_stock_only:
-        statement = statement.where(
-            Product.stock_quantity > 0, Product.discontinued.is_(False)
-        )
     try:
-        return list(db.scalars(statement.order_by(Product.id).limit(limit)).all())
+        return product_repository.search_products(
+            db,
+            category_terms=category_terms,
+            brand=brand,
+            max_price=max_price,
+            currency=currency,
+            in_stock_only=in_stock_only,
+            limit=limit,
+        )
     except SQLAlchemyError as error:
         db.rollback()
         raise ProductPersistenceError("Could not search products") from error
@@ -201,19 +152,7 @@ def search_products(
 def list_catalog_taxonomy(db: Session) -> dict[str, list[str]]:
     """Distinct category, type/sub-type and brand values currently present in the catalog."""
     try:
-        categories = {v for v in db.scalars(select(Product.category).distinct()) if v}
-        types = {
-            v
-            for col in (Product.type, Product.sub_type)
-            for v in db.scalars(select(col).distinct())
-            if v
-        }
-        brands = {v for v in db.scalars(select(Product.brand).distinct()) if v}
+        return product_repository.get_catalog_taxonomy(db)
     except SQLAlchemyError as error:
         db.rollback()
         raise ProductPersistenceError("Could not read catalog taxonomy") from error
-    return {
-        "categories": sorted(categories),
-        "types": sorted(types),
-        "brands": sorted(brands),
-    }

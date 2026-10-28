@@ -9,6 +9,7 @@ from app.backend.schemas.product import ProductCreate, ProductRead, ProductUpdat
 from app.backend.services import products as product_service
 from app.backend.services.products import DuplicateSkuError, ProductPersistenceError
 from app.db.session import get_db
+from app.services import catalog_products as product_use_cases
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def create_product(
     db: Session = Depends(get_db),
 ) -> Product:
     try:
-        return product_service.create_product(db, product_data)
+        return product_use_cases.create_product(db, product_data)
     except ProductPersistenceError as error:
         raise _database_error("creation", error) from error
 
@@ -111,7 +112,7 @@ def update_product(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
             )
-        return product_service.update_product(db, product, product_data)
+        return product_use_cases.update_product(db, product, product_data)
     except ProductPersistenceError as error:
         raise _database_error("update", error) from error
 

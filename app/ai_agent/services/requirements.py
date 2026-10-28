@@ -1,4 +1,4 @@
-"""Stage A: extract and validate customer requirements."""
+"""Extract customer requirements deterministically and validate them for retrieval."""
 
 import math
 from dataclasses import dataclass, field

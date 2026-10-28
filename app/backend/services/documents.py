@@ -4,11 +4,11 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.backend.models.document import Document
+from app.backend.repositories import documents as document_repository
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -113,13 +113,10 @@ def search_documents(
     limit: int,
     offset: int,
 ) -> tuple[list[SearchHit], int]:
-    statement = select(Document).order_by(Document.id)
-    if product_id is not None:
-        statement = statement.where(Document.product_id == product_id)
-    if document_type:
-        statement = statement.where(Document.document_type == document_type)
     try:
-        candidates = list(db.scalars(statement))
+        candidates = document_repository.list_search_candidates(
+            db, product_id=product_id, document_type=document_type
+        )
     except SQLAlchemyError as error:
         db.rollback()
         raise DocumentPersistenceError from error
@@ -142,7 +139,7 @@ def search_documents(
 
 def get_document(db: Session, document_id: str) -> Document | None:
     try:
-        return db.get(Document, document_id)
+        return document_repository.get_document(db, document_id)
     except SQLAlchemyError as error:
         db.rollback()
         raise DocumentPersistenceError from error
@@ -152,14 +149,8 @@ def list_product_documents(
     db: Session, product_id: int, *, limit: int, offset: int
 ) -> list[Document]:
     try:
-        return list(
-            db.scalars(
-                select(Document)
-                .where(Document.product_id == product_id)
-                .order_by(Document.id)
-                .limit(limit)
-                .offset(offset)
-            )
+        return document_repository.list_product_documents(
+            db, product_id, limit=limit, offset=offset
         )
     except SQLAlchemyError as error:
         db.rollback()

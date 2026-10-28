@@ -35,6 +35,26 @@ For API-only local development, create a virtual environment, install `requireme
 When running the frontend outside Compose against that local server, point both frontend API
 base URLs at `http://localhost:8000/api/v1`.
 
+## Backend architecture
+
+- `app/main.py` initializes FastAPI, middleware, documentation, static assets and health checks.
+- `app/api/v1` composes the versioned routers; feature routers in `app/backend/api` and
+  `app/ai_agent/api` handle HTTP validation, authentication dependencies and HTTP error mapping.
+- `app/backend/services` contains catalog, document and authentication use cases. These depend on
+  `app/backend/repositories` for SQLAlchemy queries and persistence operations.
+- `app/backend/models` and `app/backend/schemas` hold database mappings and API contracts.
+- `app/ai_agent/repositories` contains persistence operations for the local semantic index.
+- `app/services/catalog_products.py` coordinates catalog create/update operations with best-effort
+  synchronization of the local semantic index.
+- `app/ai_agent` contains requirement extraction, product/document retrieval, recommendation
+  orchestration, prompts, output validation and the OpenRouter integration. It reuses backend
+  catalog and document services; the AI recommendation path remains one structured LLM call after
+  deterministic parsing and retrieval.
+
+SQLAlchemy models remain the data objects passed between these layers to preserve the existing
+database behavior and response mapping. Repository functions keep query construction and persistence
+operations out of the HTTP and orchestration code without adding a second domain model layer.
+
 ## Supporting documents
 
 > **All seeded documents are MOCK DEMO DATA** generated from product catalog fields. They are

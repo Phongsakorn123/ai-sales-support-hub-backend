@@ -6,16 +6,12 @@ import hashlib
 import logging
 import math
 import threading
-from collections.abc import Sequence
 
 from fastembed import TextEmbedding
-from sqlalchemy import select
-from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from app.backend.models.document import Document
+from app.ai_agent.repositories import embeddings as embedding_repository
 from app.backend.models.product import Product
-from app.backend.models.product_embedding import ProductEmbedding
 from app.backend.services import documents as document_service
 from app.core.config import settings
 
@@ -71,12 +67,9 @@ def product_text(db: Session, product: Product) -> str:
         *product.target_customers,
         *product.use_cases,
     ]
-    docs = db.scalars(
-        select(Document)
-        .where(Document.product_id == product.id)
-        .order_by(Document.id)
-        .limit(MAX_DOCUMENTS)
-    ).all()
+    docs = document_service.list_product_documents(
+        db, product.id, limit=MAX_DOCUMENTS, offset=0
+    )
     for document in docs:
         parts.extend([document.title, document.description])
         try:
@@ -99,7 +92,7 @@ def sync_product_embedding(db: Session, product: Product) -> None:
     digest = hashlib.sha256(
         f"{INDEX_FORMAT}\0{model_name}\0{text}".encode("utf-8")
     ).hexdigest()
-    existing = db.get(ProductEmbedding, product.id)
+    existing = embedding_repository.get_product_embedding(db, product.id)
     if (
         existing
         and existing.content_hash == digest
@@ -107,20 +100,14 @@ def sync_product_embedding(db: Session, product: Product) -> None:
     ):
         return
     vector = embed_text(text)
-    if existing:
-        existing.model_name = model_name
-        existing.content_hash = digest
-        existing.vector = vector
-    else:
-        db.add(
-            ProductEmbedding(
-                product_id=product.id,
-                model_name=model_name,
-                content_hash=digest,
-                vector=vector,
-            )
-        )
-    db.commit()
+    embedding_repository.save_product_embedding(
+        db,
+        product_id=product.id,
+        model_name=model_name,
+        content_hash=digest,
+        vector=vector,
+        existing=existing,
+    )
 
 
 def try_sync_product_embedding(db: Session, product: Product) -> bool:
@@ -130,12 +117,7 @@ def try_sync_product_embedding(db: Session, product: Product) -> bool:
     except Exception as error:
         db.rollback()
         try:
-            db.execute(
-                delete(ProductEmbedding).where(
-                    ProductEmbedding.product_id == product.id
-                )
-            )
-            db.commit()
+            embedding_repository.delete_product_embedding(db, product.id)
         except Exception:
             db.rollback()
         logger.warning(
@@ -151,11 +133,7 @@ def semantic_search(
 ) -> tuple[list[tuple[int, float]], int]:
     """Return (product_id, cosine score) rows and the count of usable indexed products."""
     query_vector = embed_text(query)
-    rows = db.scalars(
-        select(ProductEmbedding).where(
-            ProductEmbedding.model_name == index_model_name()
-        )
-    ).all()
+    rows = embedding_repository.list_product_embeddings(db, index_model_name())
     scored: list[tuple[int, float]] = []
     usable = 0
     for row in rows:

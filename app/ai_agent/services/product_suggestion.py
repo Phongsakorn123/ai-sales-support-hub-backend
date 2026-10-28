@@ -20,7 +20,7 @@ from app.ai_agent.services.recommendations import (
     generate_recommendations,
 )
 from app.ai_agent.services.requirements import build_criteria
-from app.ai_agent.services.retrieval import retrieve_candidates
+from app.ai_agent.services.retrieval import Candidate, retrieve_candidates
 from app.backend.services import products as product_service
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,16 @@ NO_AI_SELECTION_NOTE = (
 NO_DOCS_NOTE = (
     "No supporting document evidence was found for some recommended products."
 )
+
+
+def _catalog_fallback_result(
+    candidates: list[Candidate], max_products: int, summary: str
+) -> ValidatedRecommendations:
+    return ValidatedRecommendations(
+        fallback_recommendations(candidates, max_products),
+        [FALLBACK_NOTE],
+        summary,
+    )
 
 
 async def suggest_products(
@@ -85,9 +95,9 @@ async def suggest_products(
     if llm is None:
         logger.info("OpenRouter is not configured; returning catalog filter matches")
         ranking_source = "catalog_fallback"
-        result = ValidatedRecommendations(
-            fallback_recommendations(retrieval.candidates, request.max_products),
-            [FALLBACK_NOTE],
+        result = _catalog_fallback_result(
+            retrieval.candidates,
+            request.max_products,
             "OpenRouter is not configured. These products were selected and ordered by catalog data and rules, not AI ranking.",
         )
     else:
@@ -107,9 +117,9 @@ async def suggest_products(
                 type(error).__name__,
             )
             ranking_source = "catalog_fallback"
-            result = ValidatedRecommendations(
-                fallback_recommendations(retrieval.candidates, request.max_products),
-                [FALLBACK_NOTE],
+            result = _catalog_fallback_result(
+                retrieval.candidates,
+                request.max_products,
                 "The AI model was unavailable. These products were selected and ordered by catalog data and rules, not AI ranking.",
             )
     if (

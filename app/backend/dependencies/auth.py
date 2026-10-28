@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.backend.models.user import User
+from app.backend.repositories import users as user_repository
 from app.backend.services.auth import (
     AuthenticationConfigurationError,
     decode_access_token,
@@ -38,7 +39,7 @@ def get_current_user(
         )
 
     try:
-        user = db.get(User, user_id)
+        user = user_repository.get_user_by_id(db, user_id)
     except SQLAlchemyError:
         db.rollback()
         logger.error("Could not load authenticated user")

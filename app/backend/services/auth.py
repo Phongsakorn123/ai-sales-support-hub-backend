@@ -5,11 +5,11 @@ import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from pydantic import SecretStr
-from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.backend.models.user import User
+from app.backend.repositories import users as user_repository
 from app.backend.schemas.auth import UserRegister
 from app.core.config import settings
 
@@ -60,9 +60,9 @@ def register_user(db: Session, user_data: UserRegister) -> User:
     username = user_data.username
     email = user_data.email
     try:
-        if db.scalar(select(User.id).where(User.username == username)) is not None:
+        if user_repository.get_user_id_by_username(db, username) is not None:
             raise DuplicateUserError("username")
-        if db.scalar(select(User.id).where(User.email == email)) is not None:
+        if user_repository.get_user_id_by_email(db, email) is not None:
             raise DuplicateUserError("email")
 
         user = User(
@@ -70,19 +70,16 @@ def register_user(db: Session, user_data: UserRegister) -> User:
             email=email,
             hashed_password=hash_password(user_data.password),
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+        return user_repository.add_user(db, user)
     except DuplicateUserError:
         db.rollback()
         raise
     except IntegrityError as error:
         db.rollback()
         try:
-            if db.scalar(select(User.id).where(User.username == username)) is not None:
+            if user_repository.get_user_id_by_username(db, username) is not None:
                 raise DuplicateUserError("username") from error
-            if db.scalar(select(User.id).where(User.email == email)) is not None:
+            if user_repository.get_user_id_by_email(db, email) is not None:
                 raise DuplicateUserError("email") from error
         except DuplicateUserError:
             raise
@@ -97,14 +94,7 @@ def register_user(db: Session, user_data: UserRegister) -> User:
 def authenticate_user(db: Session, identifier: str, password: str) -> User | None:
     normalized_identifier = identifier.strip().lower()
     try:
-        user = db.scalar(
-            select(User).where(
-                or_(
-                    User.username == normalized_identifier,
-                    User.email == normalized_identifier,
-                )
-            )
-        )
+        user = user_repository.get_user_by_identifier(db, normalized_identifier)
     except SQLAlchemyError:
         db.rollback()
         raise AuthenticationPersistenceError from None

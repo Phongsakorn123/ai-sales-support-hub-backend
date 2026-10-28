@@ -1,4 +1,7 @@
-"""Structured outputs requested from the LLM. These are untrusted until validated by the services."""
+"""Schemas for rule-extracted requirements and structured LLM outputs.
+
+LLM-produced values are untrusted until validated by the services.
+"""
 
 from typing import Annotated
 
@@ -35,7 +38,7 @@ ShortList = Annotated[list[str], BeforeValidator(_clean_list(10, 200))]
 
 
 class ExtractedRequirements(BaseModel):
-    """Stage A output: constraints extracted from the customer's natural-language request."""
+    """Intermediate constraints from deterministic rule-based extraction, not an LLM call."""
 
     category: Annotated[str | None, BeforeValidator(_clean_text(100))] = Field(
         default=None,

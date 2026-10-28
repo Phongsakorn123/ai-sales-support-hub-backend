@@ -8,13 +8,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.ai_agent.api.product_suggestions import router as ai_router
-from app.backend.api.auth import router as auth_router
-from app.backend.api.documents import (
-    product_documents_router,
-    router as documents_router,
-)
-from app.backend.api.products import router as products_router
+from app.api.v1 import router as api_router
 from app.core.config import PROJECT_ROOT, settings
 
 app = FastAPI(
@@ -95,11 +89,7 @@ STATIC_DIR = PROJECT_ROOT / "static"
 STATIC_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-app.include_router(products_router, prefix=settings.api_prefix)
-app.include_router(documents_router, prefix=settings.api_prefix)
-app.include_router(product_documents_router, prefix=settings.api_prefix)
-app.include_router(ai_router, prefix=settings.api_prefix)
-app.include_router(auth_router, prefix=settings.api_prefix)
+app.include_router(api_router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["Health"])

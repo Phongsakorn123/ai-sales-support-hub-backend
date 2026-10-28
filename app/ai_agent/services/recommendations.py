@@ -180,7 +180,6 @@ def validate_output(
 
     tier = {"exact_match": 0, "insufficient_data": 1, "alternative": 2}
     recommendations.sort(key=lambda r: tier[r.match_type])
-    recommendations.sort(key=lambda r: tier[r.match_type])
     recommendations = recommendations[:max_products]
 
     limitations = list(output.limitations)
