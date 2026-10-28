@@ -23,9 +23,11 @@ MAX_CATALOG_PRODUCTS = 5000
 MAX_CANDIDATES = 6
 ALTERNATIVE_BUDGET_CEILING = Decimal("1.5")
 EXCERPT_CHARS = 300
-DOCUMENTS_PER_PRODUCT = 1
+DOCUMENTS_PER_PRODUCT = 2
 DOCUMENT_PREFERENCE = [
     "datasheet",
+    "valuation_report",
+    "publication",
     "product_manual",
     "compatibility_guide",
     "brochure",
@@ -115,6 +117,156 @@ def _category_match(product: Product, criteria: SearchCriteria) -> bool:
     )
 
 
+_QUERY_INTENT_WORDS = {
+    "search", "find", "look", "looking", "need", "want", "show",
+    "recommend", "recommendation", "suggest", "suggestion", "related", "help",
+    "product", "products", "document", "documents", "manual", "manuals",
+    "publication", "publications", "report", "reports", "analysis",
+    "valuation", "price", "information", "info", "please",
+}
+_QUERY_ALIASES = {
+    "labtop": "laptop",
+    "laptpo": "laptop",
+    "notebok": "notebook",
+    "notebook": "laptop",
+    "ultrabook": "laptop",
+    "display": "monitor",
+    "screen": "monitor",
+    "headset": "headphones",
+    "earphones": "headphones",
+    "mice": "mouse",
+}
+_QUERY_SYNONYMS = {
+    "laptop": {
+        "laptop", "labtop", "laptpo", "notebook", "notebok", "ultrabook",
+    },
+    "monitor": {"monitor", "display", "screen"},
+    "headphones": {"headphones", "headset", "earphones"},
+    "mouse": {"mouse", "mice"},
+    "keyboard": {"keyboard", "keyboards"},
+}
+_GENERIC_PRODUCT_TYPES = {
+    "laptop", "desktop", "computer", "workstation", "server", "monitor",
+    "headphones", "keyboard", "mouse", "router", "switch",
+}
+
+
+def _query_concepts(criteria: SearchCriteria) -> list[str]:
+    concepts = []
+    for token in re.findall(r"[a-z0-9]+", criteria.query_text.casefold()):
+        if token in _QUERY_INTENT_WORDS or token in STOPWORDS or len(token) < 2:
+            continue
+        concepts.append(_QUERY_ALIASES.get(token, token))
+    return list(dict.fromkeys(concepts))
+
+
+def _concept_matches(term: str, text: str) -> bool:
+    alternatives = _QUERY_SYNONYMS.get(term, {term})
+    return any(
+        re.search(rf"(?<![\w]){re.escape(value)}(?![\w])", text)
+        for value in alternatives
+    )
+
+
+def _exact_keyword_matches(
+    products: list[Product], concepts: list[str]
+) -> list[Product]:
+    """Return products matching every query concept (including known synonyms)."""
+    if not concepts:
+        return []
+    return [
+        product
+        for product in products
+        if all(_concept_matches(concept, _haystack(product)) for concept in concepts)
+    ]
+
+
+def _identity_similar_matches(
+    products: list[Product], criteria: SearchCriteria, concepts: list[str]
+) -> list[Product] | None:
+    """Keep explicit brand/model identity in scope before broader semantic matching."""
+    if criteria.brand_filter:
+        scoped = [
+            product for product in products
+            if (product.brand or "").casefold() == criteria.brand_filter.casefold()
+        ]
+    else:
+        scoped = products
+
+    brand_tokens = set(re.findall(
+        r"[a-z0-9]+", (criteria.brand_filter or "").casefold()
+    ))
+    identity_text = " ".join(
+        f"{product.name or ''} {product.model or ''}" for product in scoped
+    ).casefold()
+    family_terms = [
+        term for term in concepts
+        if term not in _GENERIC_PRODUCT_TYPES
+        and term not in brand_tokens
+        and any(
+            _concept_matches(term, f"{product.name or ''} {product.model or ''}".casefold())
+            for product in scoped
+        )
+    ]
+    if family_terms:
+        return [
+            product for product in scoped
+            if all(
+                _concept_matches(term, f"{product.name or ''} {product.model or ''}".casefold())
+                for term in family_terms
+            )
+        ]
+
+    if criteria.brand_filter and scoped:
+        category_matches = [
+            product for product in scoped if _category_match(product, criteria)
+        ]
+        return category_matches or scoped
+    return None
+
+
+def _recommendation_candidate_pool(
+    catalog: list[Product],
+    anchor_products: list[Product],
+    criteria: SearchCriteria,
+) -> list[Product]:
+    """Add same-category products so recommendations can include useful alternatives."""
+    if criteria.category_terms:
+        related = [p for p in catalog if _category_match(p, criteria)]
+    else:
+        anchor_types = {
+            p.type.casefold() for p in anchor_products if p.type
+        }
+        related = [
+            p for p in catalog
+            if p.type and p.type.casefold() in anchor_types
+        ]
+    if related:
+        return list({p.id: p for p in [*anchor_products, *related]}.values())
+    return anchor_products or catalog
+
+
+def _keyword_relevance(product: Product, concepts: list[str]) -> tuple[float, float]:
+    """Score partial matches, giving exact model/family terms more value than broad types."""
+    text = _haystack(product)
+    identity = f"{product.name or ''} {product.model or ''}".casefold()
+    matched_weight = 0.0
+    total_weight = 0.0
+    matched_count = 0
+    for concept in concepts:
+        weight = 1.0 if concept in _GENERIC_PRODUCT_TYPES else 2.0
+        if _concept_matches(concept, identity) and concept not in _GENERIC_PRODUCT_TYPES:
+            weight += 2.0
+        total_weight += weight
+        if _concept_matches(concept, text):
+            matched_weight += weight
+            matched_count += 1
+    return (
+        matched_weight / total_weight if total_weight else 0.0,
+        matched_count / len(concepts) if concepts else 0.0,
+    )
+
+
 def _excerpt(text: str, terms: list[str]) -> str:
     lines = text.splitlines()
     start = next(
@@ -132,7 +284,7 @@ def _excerpt(text: str, terms: list[str]) -> str:
 def _load_documents(
     db: Session, product: Product, terms: list[str], notes: list[str]
 ) -> list[DocumentEvidence]:
-    evidence: list[tuple[float, int, DocumentEvidence]] = []
+    evidence: list[tuple[int, float, int, DocumentEvidence]] = []
     for document in document_service.list_product_documents(
         db, product.id, limit=20, offset=0
     ):
@@ -148,15 +300,21 @@ def _load_documents(
             if document.document_type in DOCUMENT_PREFERENCE
             else 99
         )
+        category_order = (
+            0 if document.document_type in {"datasheet", "publication", "product_manual"}
+            else 1 if document.document_type == "valuation_report"
+            else 2
+        )
         evidence.append(
             (
+                category_order,
                 _score(text.lower(), terms),
                 order,
                 DocumentEvidence(document, _excerpt(text, terms)),
             )
         )
-    evidence.sort(key=lambda item: (-item[0], item[1], item[2].document.id))
-    return [item[2] for item in evidence[:DOCUMENTS_PER_PRODUCT]]
+    evidence.sort(key=lambda item: (item[3].document.is_mock, item[0], -item[1], item[2], item[3].document.id))
+    return [item[3] for item in evidence[:DOCUMENTS_PER_PRODUCT]]
 
 
 def _money(value: Decimal, currency: str) -> str:
@@ -286,6 +444,7 @@ def retrieve_candidates(
     *,
     include_out_of_stock: bool,
     max_products: int,
+    single_product_lookup: bool = False,
 ) -> Retrieval:
     notes: list[str] = []
     terms = _terms(criteria)
@@ -298,40 +457,61 @@ def retrieve_candidates(
             ],
         )
 
-    catalog = product_service.search_products(
+    products = product_service.search_products(
         db, in_stock_only=not include_out_of_stock, limit=MAX_CATALOG_PRODUCTS
     )
-    category_products = [
-        product for product in catalog if _category_match(product, criteria)
-    ]
-    if criteria.category_terms and category_products:
-
-        products = category_products
-        category_matched = True
-    else:
-        products = catalog
-        category_matched = not criteria.category_terms
-        if criteria.category_terms:
+    query_concepts = _query_concepts(criteria)
+    exact_products = _exact_keyword_matches(products, query_concepts)
+    exact_match_ids = {product.id for product in exact_products}
+    identity_matches = (
+        _identity_similar_matches(products, criteria, query_concepts)
+        if not exact_products
+        else None
+    )
+    identity_match_ids = {product.id for product in identity_matches or []}
+    if single_product_lookup and exact_products:
+        # Document lookups must not return substitute products.
+        products = exact_products
+        notes.append(
+            "Exact keyword and synonym matches were found for the document lookup."
+        )
+    elif single_product_lookup:
+        if identity_matches:
+            products = identity_matches
             notes.append(
-                "No product matched the requested category; keyword and semantic search used the full catalog."
+                "No exact product matched every query concept; document lookup is scoped to the closest explicit brand/model matches."
+            )
+        elif criteria.category_terms and any(
+            _category_match(product, criteria) for product in products
+        ):
+            products = [p for p in products if _category_match(p, criteria)]
+            notes.append(
+                "No exact product matched every query concept; document lookup is scoped to the requested product category."
+            )
+        else:
+            notes.append(
+                "No exact product or explicit brand/model match was found; selecting the closest hybrid match for document lookup."
+            )
+    else:
+        anchors = exact_products or identity_matches or []
+        if not anchors and criteria.category_terms:
+            anchors = [p for p in products if _category_match(p, criteria)]
+        products = _recommendation_candidate_pool(products, anchors, criteria)
+        if not exact_products:
+            notes.append(
+                "No exact product matched every query concept; showing closest same-category and cross-brand alternatives."
             )
     by_id = {product.id: product for product in products}
     keyword_hits = [
         product
         for product in products
-        if _score(_haystack(product), terms) > 0
-        or (bool(criteria.category_terms) and _category_match(product, criteria))
+        if _keyword_relevance(product, query_concepts)[0] > 0
+        or (not query_concepts and criteria.category_terms and _category_match(product, criteria))
     ]
     keyword_hits.sort(
         key=lambda product: (
-            -(
-                _score(_haystack(product), terms)
-                + (
-                    1.0
-                    if criteria.category_terms and _category_match(product, criteria)
-                    else 0.0
-                )
-            ),
+            -_keyword_relevance(product, query_concepts)[0],
+            -_keyword_relevance(product, query_concepts)[1],
             product.id,
         )
     )
@@ -342,7 +522,7 @@ def retrieve_candidates(
     usable_embeddings = 0
     semantic_failed = False
     try:
-        if terms:
+        if terms or query_concepts:
             semantic_ids, usable_embeddings = embeddings.semantic_search(
                 db,
                 criteria.query_text or " ".join(terms),
@@ -375,8 +555,8 @@ def retrieve_candidates(
         keyword_ids,
         semantic_ids,
         k=settings.retrieval_rrf_k,
-        keyword_weight=settings.retrieval_keyword_weight,
-        semantic_weight=settings.retrieval_semantic_weight,
+        keyword_weight=1.0,
+        semantic_weight=1.0,
     )
     ranked_ids = sorted(
         fused,
@@ -388,8 +568,21 @@ def retrieve_candidates(
         if product is None:
             continue
         candidate = evaluate_product(
-            product, criteria, terms, category_matched=category_matched
+            product,
+            criteria,
+            terms,
+            category_matched=(
+                not criteria.category_terms or _category_match(product, criteria)
+            ),
         )
+        if product_id not in exact_match_ids:
+            candidate.match_type = "alternative"
+            candidate.unmet.append(
+                "This product did not match all query concepts exactly; it is a similar hybrid-search result."
+            )
+            candidate.sort_key = (
+                2, len(candidate.unmet), *candidate.sort_key[2:]
+            )
         metadata = fused[product_id]
         candidate.keyword_rank = metadata["keyword_rank"]  # type: ignore[assignment]
         candidate.semantic_rank = metadata["semantic_rank"]  # type: ignore[assignment]
@@ -423,14 +616,28 @@ def retrieve_candidates(
         )
         return Retrieval([], notes, mode)
 
-    evaluated.sort(
-        key=lambda candidate: (
-            *candidate.sort_key[:4],
-            -candidate.rrf_score,
-            candidate.product.id,
+    priority_ids = exact_match_ids or identity_match_ids
+    if priority_ids and not single_product_lookup:
+        evaluated.sort(
+            key=lambda candidate: (
+                0 if candidate.product.id in priority_ids else 1,
+                -candidate.rrf_score,
+                candidate.keyword_rank or POOL_SIZE + 1,
+                candidate.semantic_rank or POOL_SIZE + 1,
+                candidate.product.id,
+            )
         )
-    )
+    else:
+        evaluated.sort(
+            key=lambda candidate: (
+                *candidate.sort_key[:4],
+                -candidate.rrf_score,
+                candidate.product.id,
+            )
+        )
     candidates = evaluated[: min(max_products + 2, MAX_CANDIDATES)]
+    if single_product_lookup:
+        candidates = candidates[:1]
     for candidate in candidates:
         candidate.documents = _load_documents(db, candidate.product, terms, notes)
     return Retrieval(candidates, notes, mode)

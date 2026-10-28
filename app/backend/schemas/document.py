@@ -13,6 +13,8 @@ class DocumentRead(BaseModel):
     title: str
     document_type: str = Field(examples=["datasheet"])
     description: str | None
+    source_name: str | None = None
+    source_url: str | None = None
     file_format: str
     version: str
     approval_status: str = Field(

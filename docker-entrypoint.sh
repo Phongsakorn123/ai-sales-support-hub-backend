@@ -20,6 +20,7 @@ python -m scripts.seed_consumer_catalog
 
 echo "Creating demo supporting documents..."
 python -m scripts.seed_documents
+python -m scripts.seed_reference_documents
 
 echo "Building the local product embedding index..."
 if ! python -m scripts.reindex_product_embeddings; then

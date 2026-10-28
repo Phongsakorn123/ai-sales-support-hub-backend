@@ -21,6 +21,7 @@ from app.ai_agent.services.recommendations import (
 )
 from app.ai_agent.services.requirements import build_criteria
 from app.ai_agent.services.retrieval import Candidate, retrieve_candidates
+from app.ai_agent.services.request_intent import is_document_lookup_request
 from app.backend.services import products as product_service
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ DISCLAIMER = (
     "Confirm details before quoting a customer."
 )
 MOCK_NOTE = "Cited supporting documents are mock demo data and are not verified manufacturer documentation."
+REFERENCE_NOTE = "Some external links open live search results rather than a specific document. Treat search results as leads, not verified reports or valuations; confirm exact SKU, region, date, revision and current terms before sharing or quoting."
 FALLBACK_NOTE = (
     "The AI model could not be reached, so products were not ranked or assessed by AI. They match the "
     "backend filters only; verify other requirements manually."
@@ -75,6 +77,28 @@ async def suggest_products(
     limitations = [*criteria.notes, *retrieval.notes]
     parsed = criteria.parsed
 
+    def catalog_fallback(summary: str) -> ValidatedRecommendations:
+        # Intent heuristics are only a degraded fallback; the configured LLM chooses
+        # the mode tool during normal agent execution.
+        if is_document_lookup_request(request.requirements, criteria):
+            from app.ai_agent.tools.product_tools import select_document_candidate
+
+            candidate = select_document_candidate(
+                retrieval.candidates, request.requirements
+            )
+            if candidate is None:
+                return ValidatedRecommendations(
+                    [],
+                    [FALLBACK_NOTE],
+                    "No matching catalog product was found for this document request.",
+                )
+            return _catalog_fallback_result(
+                [candidate], 1, summary
+            )
+        return _catalog_fallback_result(
+            retrieval.candidates, request.max_products, summary
+        )
+
     if not retrieval.candidates:
         explanation = "No suitable product or meaningful alternative was found in the available catalog for these requirements."
         if parsed.missing_information:
@@ -95,9 +119,7 @@ async def suggest_products(
     if llm is None:
         logger.info("OpenRouter is not configured; returning catalog filter matches")
         ranking_source = "catalog_fallback"
-        result = _catalog_fallback_result(
-            retrieval.candidates,
-            request.max_products,
+        result = catalog_fallback(
             "OpenRouter is not configured. These products were selected and ordered by catalog data and rules, not AI ranking.",
         )
     else:
@@ -117,9 +139,7 @@ async def suggest_products(
                 type(error).__name__,
             )
             ranking_source = "catalog_fallback"
-            result = _catalog_fallback_result(
-                retrieval.candidates,
-                request.max_products,
+            result = catalog_fallback(
                 "The AI model was unavailable. These products were selected and ordered by catalog data and rules, not AI ranking.",
             )
     if (
@@ -129,8 +149,18 @@ async def suggest_products(
     ):
 
         ranking_source = "catalog_fallback"
+        fallback_candidates = retrieval.candidates
+        fallback_limit = request.max_products
+        if is_document_lookup_request(request.requirements, criteria):
+            from app.ai_agent.tools.product_tools import select_document_candidate
+
+            candidate = select_document_candidate(
+                fallback_candidates, request.requirements
+            )
+            fallback_candidates = [candidate] if candidate else []
+            fallback_limit = 1
         result = ValidatedRecommendations(
-            fallback_recommendations(retrieval.candidates, request.max_products),
+            fallback_recommendations(fallback_candidates, fallback_limit),
             [*result.limitations, NO_AI_SELECTION_NOTE],
             result.summary
             or "No product fully meets the requirements; closest alternatives chosen by catalog rules.",
@@ -151,6 +181,8 @@ async def suggest_products(
     documents = [d for r in recommendations for d in r.supporting_documents]
     if any(d.is_mock for d in documents):
         limitations.append(MOCK_NOTE)
+    if any(d.source_url for d in documents):
+        limitations.append(REFERENCE_NOTE)
     if recommendations and any(not r.supporting_documents for r in recommendations):
         limitations.append(NO_DOCS_NOTE)
 

@@ -41,6 +41,8 @@ class Document(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     document_type: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     file_path: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     file_format: Mapped[str] = mapped_column(

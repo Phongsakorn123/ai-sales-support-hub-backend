@@ -48,8 +48,10 @@ def get_llm() -> StructuredLLM | None:
     description=(
         "Parses budget, currency, category, brand and minimum RAM with deterministic rules, retrieves "
         "candidates through keyword and local multilingual semantic search fused with Reciprocal Rank "
-        "Fusion (or explicitly reported keyword-only fallback), includes linked Markdown documents, then makes ONE call to the configured "
-        "OpenRouter model to rank and explain them. Names, prices, stock and document metadata always "
+        "Fusion (or explicitly reported keyword-only fallback), then lets the OpenRouter agent choose between "
+        "`lookup_product_documents` and `recommend_products`. Document lookup returns one product; recommendation "
+        "can return up to `max_products`, with exact matches before similar cross-brand alternatives. "
+        "Names, prices, stock and document metadata always "
         "come from the database. If the model is unavailable, catalog filter matches are returned with "
         "`ranking_source=catalog_fallback`. Seeded documents are mock demo data, not verified "
         "manufacturer evidence."

@@ -43,6 +43,8 @@ class SupportingDocument(BaseModel):
     )
     approval_status: str
     file_url: str
+    source_name: str | None = None
+    source_url: str | None = None
 
 
 MatchType = Literal["exact_match", "alternative", "insufficient_data"]

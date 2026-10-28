@@ -34,7 +34,7 @@ def in_stock(candidate: Candidate) -> bool:
     return candidate.product.stock_quantity > 0 and not candidate.product.discontinued
 
 
-def candidate_payload(candidate: Candidate) -> dict:
+def candidate_payload(candidate: Candidate, *, include_documents: bool = True) -> dict:
     """Fields shown to the LLM. cost_price, SKU, image URLs and timestamps are deliberately excluded."""
     p = candidate.product
     return {
@@ -70,10 +70,17 @@ def candidate_payload(candidate: Candidate) -> dict:
                 "title": e.document.title,
                 "document_type": e.document.document_type,
                 "is_mock": e.document.is_mock,
+                "source_kind": (
+                    "live web search results; not a direct document or verified report"
+                    if e.document.source_name == "Google Search"
+                    else "external publisher page; verify exact model and revision"
+                    if e.document.source_url
+                    else "internal supporting document"
+                ),
                 "excerpt": neutralize(e.excerpt),
             }
             for e in candidate.documents
-        ],
+        ] if include_documents else [],
     }
 
 
@@ -93,7 +100,11 @@ def build_recommendation(
 ) -> ProductRecommendation:
     """Every product fact comes from the database record, never from model output."""
     p = candidate.product
-    provided = {e.document.id: e.document for e in candidate.documents}
+    provided = {str(e.document.id): e.document for e in candidate.documents}
+    selected_ids = list(dict.fromkeys([
+        *(str(document_id) for document_id in document_ids),
+        *(str(e.document.id) for e in candidate.documents if e.document.source_url and not e.document.is_mock),
+    ]))
     return ProductRecommendation(
         product_id=p.id,
         name=p.name,
@@ -112,14 +123,16 @@ def build_recommendation(
         follow_up_question=follow_up_question,
         supporting_documents=[
             SupportingDocument(
-                document_id=provided[i].id,
+                document_id=i,
                 title=provided[i].title,
                 document_type=provided[i].document_type,
                 is_mock=provided[i].is_mock,
                 approval_status=provided[i].approval_status,
                 file_url=f"{settings.api_prefix}/documents/{provided[i].id}/file",
+                source_name=provided[i].source_name,
+                source_url=provided[i].source_url,
             )
-            for i in document_ids
+            for i in selected_ids if i in provided
         ],
     )
 
@@ -159,11 +172,13 @@ def validate_output(
         if len(recommendations) >= max_products:
             break
         seen.add(item.product_id)
-        provided = {e.document.id: e.document for e in candidate.documents}
-        cited = list(
-            dict.fromkeys(i for i in item.supporting_document_ids if i in provided)
-        )
-        if len(cited) != len(set(item.supporting_document_ids)):
+        provided = {str(e.document.id): e.document for e in candidate.documents}
+        cited = list(dict.fromkeys(
+            str(document_id)
+            for document_id in item.supporting_document_ids
+            if str(document_id) in provided
+        ))
+        if len(cited) != len(set(map(str, item.supporting_document_ids))):
             discarded = True
         recommendations.append(
             build_recommendation(
@@ -206,17 +221,44 @@ async def generate_recommendations(
     candidates: list[Candidate],
     max_products: int,
 ) -> ValidatedRecommendations:
-    output = await llm.ainvoke_structured(
-        RECOMMENDATION_PROMPT,
-        RecommendationOutput,
-        {
-            "requirements": neutralize(requirements),
-            "parsed": json.dumps(parsed.model_dump(mode="json"), ensure_ascii=False),
-            "candidates": json.dumps(
-                [candidate_payload(c) for c in candidates], ensure_ascii=False
+    variables = {
+        "requirements": neutralize(requirements),
+        "parsed": json.dumps(parsed.model_dump(mode="json"), ensure_ascii=False),
+        "candidates": json.dumps(
+            [candidate_payload(c, include_documents=False) for c in candidates],
+            ensure_ascii=False,
+        ),
+        "max_products": max_products,
+    }
+    tool_agent = getattr(llm, "ainvoke_tool_agent", None)
+    if callable(tool_agent):
+        from app.ai_agent.tools.product_tools import build_product_tools
+
+        tool_schemas, tool_handlers = build_product_tools(candidates)
+        output = await tool_agent(
+            RECOMMENDATION_PROMPT,
+            RecommendationOutput,
+            variables,
+            tool_schemas=tool_schemas,
+            tool_handlers=tool_handlers,
+            final_tool_name="submit_recommendations",
+            product_document_tool_name="search_product_documents",
+            exclusive_mode_tool_names=(
+                "lookup_product_documents",
+                "recommend_products",
             ),
-            "max_products": max_products,
-        },
-        max_tokens=RECOMMENDATION_MAX_TOKENS,
-    )
+            document_lookup_tool_name="lookup_product_documents",
+            recommendation_tool_name="recommend_products",
+            max_tokens=RECOMMENDATION_MAX_TOKENS,
+        )
+    else:
+        # Test doubles and alternate adapters can retain the structured-only protocol.
+        output = await llm.ainvoke_structured(
+            RECOMMENDATION_PROMPT,
+            RecommendationOutput,
+            {**variables, "candidates": json.dumps(
+                [candidate_payload(c) for c in candidates], ensure_ascii=False
+            )},
+            max_tokens=RECOMMENDATION_MAX_TOKENS,
+        )
     return validate_output(output, candidates, max_products)
